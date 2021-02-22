@@ -11,14 +11,11 @@ class JACShell(cmd.Cmd):
     prompt = click.style("jac-cli@ntua",fg='cyan') + "$ "
 
     def do_help(self, line):
-        try:
-            with click.Context(cli) as ctx:
-                click.echo(cli.get_help(ctx))
-        except:
-            cmd.Cmd.default(self, line)
+        # Don't use default help of cmd library
+        self.default("help " + line)
 
     def do_exit(self, inp):
-        click.echo("\n\nExiting jac shell...")
+        click.echo("\nExiting jac shell...")
         return True
 
     def default(self, line):
@@ -52,7 +49,7 @@ def main():
     try:
         jacshell.cmdloop()
     except KeyboardInterrupt:
-        jacshell.do_exit("")
+        jacshell.do_exit(None)
 
 if __name__ == "__main__":
     main()
