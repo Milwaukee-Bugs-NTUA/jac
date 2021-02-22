@@ -11,14 +11,9 @@ class JACShell(cmd.Cmd):
     prompt = click.style("jac-cli@ntua",fg='cyan') + "$ "
 
     def do_help(self, line):
-        command = cli.commands.get(line)
         try:
-            if command:
-                with click.Context(command) as ctx:
-                    click.echo(command.get_help(ctx))
-            else:
-                with click.Context(cli) as ctx:
-                    click.echo(cli.get_help(ctx))
+            with click.Context(cli) as ctx:
+                click.echo(cli.get_help(ctx))
         except:
             cmd.Cmd.default(self, line)
 
