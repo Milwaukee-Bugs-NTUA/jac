@@ -49,7 +49,10 @@ def main():
     click.echo("🎯 Just Another Chord implementation. 🎯\n")
 
     jacshell = JACShell()
-    jacshell.cmdloop()
+    try:
+        jacshell.cmdloop()
+    except KeyboardInterrupt:
+        jacshell.do_exit("")
 
 if __name__ == "__main__":
     main()
