@@ -23,17 +23,24 @@ class JacShell(cmd.Cmd):
         subcommand = cli.commands.get(args[0])
         if subcommand:
             try:
-                res = subcommand.main(args[1:],prog_name=args[0],standalone_mode = False)
-                if not res == 0:
-                    click.echo("Something went wrong")
+                subcommand.main(args[1:],prog_name=args[0],standalone_mode = False)
+            except click.NoSuchOption as option_error:
+                option_error.show()
+            except click.BadOptionUsage as bad_option:
+                bad_option.show()
+            except click.BadArgumentUsage as bad_argument:
+                bad_argument.show()
             except click.UsageError as usage_error:
                 usage_error.show()
             except click.BadParameter as bad_parameter:
                 bad_parameter.show()
-            except click.Abort as abort_error:
-                abort_error.show()
-            # except:
-            #     click.echo("Command ended unexpectedly")
+            except click.FileError as file_error:
+                file_error.show()
+            except click.Abort:
+                click.echo("Command ended unexpectedly")
+            except NotImplementedError:
+                click.echo("Not Implemented Yet")
+
         else:
             return cmd.Cmd.default(self, line)
 

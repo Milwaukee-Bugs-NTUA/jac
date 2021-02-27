@@ -20,12 +20,10 @@ def join():
         os.execle("./server.py","server.py",{"FLASK_APP":"server.py"})
         # Unreachable statement. 
         # Executed only if exec fails
-        print("Couldn't start jac server")
-        return -1      
+        print("Couldn't start jac server")     
     else:
         time.sleep(1)
         print("New node joined")
-        return 0
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')
@@ -64,7 +62,6 @@ def depart():
     url = "http://localhost:5000/shutdown"
     requests.post(url)
     click.echo("Departure of node")
-    return 0
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def overlay():
