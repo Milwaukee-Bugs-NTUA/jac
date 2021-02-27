@@ -6,7 +6,7 @@ import subprocess as sp
 
 from cli import *
 
-class JACShell(cmd.Cmd):
+class JacShell(cmd.Cmd):
 
     prompt = click.style("jac-cli@ntua",fg='cyan') + "$ "
 
@@ -45,7 +45,7 @@ def main():
     click.echo(f.renderText('J. A. C.'))
     click.echo("🎯 Just Another Chord implementation. 🎯\n")
 
-    jacshell = JACShell()
+    jacshell = JacShell()
     try:
         jacshell.cmdloop()
     except KeyboardInterrupt:
