@@ -32,8 +32,8 @@ class JACShell(cmd.Cmd):
                 bad_parameter.show()
             except click.Abort as abort_error:
                 abort_error.show()
-            except:
-                click.echo("Command ended unexpectedly")
+            # except:
+            #     click.echo("Command ended unexpectedly")
         else:
             return cmd.Cmd.default(self, line)
 

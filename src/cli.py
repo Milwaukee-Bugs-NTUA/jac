@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import click
+import requests
+import os
+import time
 
 CONTEXT_SETTINGS = dict(help_option_names=['--help','-h'])
 
@@ -12,8 +15,17 @@ def join():
     """
         Inserts a new node.
     """
-    click.echo("New node joined")
-    raise NotImplementedError
+    pid = os.fork()
+    if pid == 0:
+        os.execle("./server.py","server.py",{"FLASK_APP":"server.py"})
+        # Unreachable statement. 
+        # Executed only if exec fails
+        print("Couldn't start jac server")
+        return -1      
+    else:
+        time.sleep(1)
+        print("New node joined")
+        return 0
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')
@@ -48,8 +60,11 @@ def depart():
     """
         Makes current node to depart.
     """
+    # Need to fix address
+    url = "http://localhost:5000/shutdown"
+    requests.post(url)
     click.echo("Departure of node")
-    raise NotImplementedError
+    return 0
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def overlay():
