@@ -3,6 +3,7 @@
 from flask import Flask
 from flask import request
 import logging
+import json
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
@@ -15,8 +16,24 @@ def shutdown_server():
     func()
 
 @app.route('/')
-def hello_world():
+def health_check():
     return 'Hello, World!\n'
+
+@app.route('/query/<key>')
+def query(key):
+    return f'Key pair ({key}, 42)\n'
+
+@app.route('/insert/<key>/<value>')
+def insert(key, value):
+    return 'Inserted keypair ({key},{value})!\n'
+
+@app.route('/delete/<key>')
+def delete(key):
+    return 'Deleted key <key>!\n'
+
+@app.route('/overlay')
+def overlay():
+    return 'Suppose that this is the topology!\n'
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():

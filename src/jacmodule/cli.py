@@ -20,10 +20,10 @@ def join():
         os.execle("./server.py","server.py",{"FLASK_APP":"server.py"})
         # Unreachable statement. 
         # Executed only if exec fails
-        print("Couldn't start jac server")     
+        click.echo("Couldn't start jac server")     
     else:
         time.sleep(1)
-        print("New node joined")
+        click.echo("New node joined")
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')

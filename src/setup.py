@@ -21,5 +21,6 @@ setup(
             "cmd2",
             "requests",
             "pyfiglet",
+            "Flask",
         ],
 )
