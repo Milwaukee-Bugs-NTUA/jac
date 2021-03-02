@@ -22,7 +22,7 @@ def join():
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
     else:
-        time.sleep(1)
+        time.sleep(5)
         click.echo("New node joined")
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
