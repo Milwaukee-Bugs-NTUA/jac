@@ -43,8 +43,15 @@ def shutdown():
     return 'Server shutting down...\n'  
 
 if __name__ == "__main__":
+
     if len(sys.argv) < 2:
         print("Please provide available port number")
         exit()
     ip = socket.gethostbyname(socket.gethostname())
-    app.run(host=ip,port=sys.argv[1])
+
+    try:
+        app.run(host=ip, port=sys.argv[1])
+    except socket.error:
+        print("Port {} is not available".format(sys.argv[1]))
+        exit()
+
