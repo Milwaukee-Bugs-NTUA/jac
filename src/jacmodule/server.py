@@ -1,8 +1,10 @@
-#!/usr/bin/env python3
+#!/home/user/.anaconda3/bin/python
 
 from flask import Flask
 from flask import request
 import logging
+import socket
+import sys
 import json
 
 app = Flask(__name__)
@@ -21,11 +23,11 @@ def health_check():
 
 @app.route('/query/<key>')
 def query(key):
-    return f'Key pair ({key}, 42)\n'
+    return "Key pair ({key}, 42)\n".format(key)
 
 @app.route('/insert/<key>/<value>')
 def insert(key, value):
-    return 'Inserted keypair ({key},{value})!\n'
+    return "Inserted keypair ({key},{value})!\n".format(key,value)
 
 @app.route('/delete/<key>')
 def delete(key):
@@ -38,7 +40,11 @@ def overlay():
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
     shutdown_server()
-    return 'Server shutting down...\n'
+    return 'Server shutting down...\n'  
 
 if __name__ == "__main__":
-    app.run()
+    if len(sys.argv) < 2:
+        print("Please provide available port number")
+        exit()
+    ip = socket.gethostbyname(socket.gethostname())
+    app.run(host=ip,port=sys.argv[1])

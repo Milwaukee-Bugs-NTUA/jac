@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/home/user/.anaconda3/bin/python
+
 import click
 import cmd
 from pyfiglet import Figlet

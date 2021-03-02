@@ -1,10 +1,19 @@
-#!/usr/bin/env python3
+#!/home/user/.anaconda3/bin/python
+
 import click
 import requests
+import socket
 import os
 import time
 
 CONTEXT_SETTINGS = dict(help_option_names=['--help','-h'])
+ip = socket.gethostbyname(socket.gethostname())
+port = None
+
+def port_in_use(port):
+    global ip
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((ip, port)) == 0
 
 @click.group(add_help_option=False,options_metavar="",subcommand_metavar="COMMAND [OPTIONS] [ARGS]")
 def cli():
@@ -15,9 +24,20 @@ def join():
     """
         Inserts a new node.
     """
+    global port
+    # Find available port
+    for p in range(5000,5100):
+        if port_in_use(p) == 0:
+            port = p
+            break
+    
+    if port == None:
+        click.echo("Could find available port. Couldn't start jac server.")
+        return
+
     pid = os.fork()
     if pid == 0:
-        os.execle("./server.py","server.py",{"FLASK_APP":"server.py"})
+        os.execle("./server.py","server.py",str(port),{"FLASK_APP":"server.py"})
         # Unreachable statement. 
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
@@ -59,7 +79,9 @@ def depart():
         Makes current node to depart.
     """
     # Need to fix address
-    url = "http://localhost:5000/shutdown"
+    global port
+    ip = socket.gethostbyname(socket.gethostname())
+    url = "http://{}:{}/shutdown".format(ip,port)
     requests.post(url)
     click.echo("Departure of node")
 
