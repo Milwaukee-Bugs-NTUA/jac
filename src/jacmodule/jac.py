@@ -1,4 +1,4 @@
-#!/home/user/.anaconda3/bin/python
+#!/usr/bin/env python
 
 import click
 import cmd

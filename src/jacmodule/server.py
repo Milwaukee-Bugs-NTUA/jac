@@ -1,4 +1,4 @@
-#!/home/user/.anaconda3/bin/python
+#!/usr/bin/env python
 
 from flask import Flask
 from flask import request

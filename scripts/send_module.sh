@@ -1,20 +1,20 @@
 #!/bin/bash
 
-if [[ -z "${HOSTNAME}" ]]
+if [[ -z "${VMNAME}" ]]
 then
-    echo "Please provide a hostname"
-    echo "Usage: export HOSTNAME=<hostname> && ./send_module.sh"
+    echo "Please provide a vm name"
+    echo "Usage: export VMNAME=<vmname> && ./send_module.sh"
     exit  
 fi
 
 # Zip source code & scripts folder
 tar --exclude="../src/__pycache__" -czvf ../code.tar.gz ../scripts ../src
 # Send tarball to main-node
-scp ../code.tar.gz user@$HOSTNAME:.
+scp ../code.tar.gz user@$VMNAME:.
 # Uncompressed tarballs
-ssh user@$HOSTNAME 'tar -xzf ./code.tar.gz && rm ./code.tar.gz'
+ssh user@$VMNAME 'tar -xzf ./code.tar.gz && rm ./code.tar.gz'
 
 # Distribute code to nodes
-ssh user@$HOSTNAME './scripts/distribute_module.sh'
+ssh user@$VMNAME './scripts/distribute_module.sh'
 
 
