@@ -19,7 +19,7 @@ def shutdown_server():
 
 @app.route('/')
 def health_check():
-    return 'Hello, World!\n'
+    return "\nServer is up and running!"
 
 @app.route('/query/<key>')
 def query(key):

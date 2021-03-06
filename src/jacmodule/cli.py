@@ -37,13 +37,19 @@ def join():
 
     pid = os.fork()
     if pid == 0:
-        os.execle("./server.py","server.py",str(port),{"FLASK_APP":"server.py"})
+        os.execle("./server.py","server.py",str(port),os.environ)
         # Unreachable statement. 
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
     else:
-        time.sleep(5)
-        click.echo("New node joined")
+        url = "http://{}:{}/".format(ip,port)
+        while True:
+            try:
+                r = requests.get(url)
+                break
+            except requests.exceptions.ConnectionError:
+                pass
+        click.echo(r.text)
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')
