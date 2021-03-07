@@ -8,7 +8,7 @@ then
 fi
 
 # Zip source code & scripts folder
-tar --exclude="../src/__pycache__" -czvf ../code.tar.gz ../scripts ../src
+tar --exclude="../src/jacmodule/__pycache__" -czvf ../code.tar.gz ../scripts ../src
 # Send tarball to main-node
 scp ../code.tar.gz user@$VMNAME:.
 # Uncompressed tarballs

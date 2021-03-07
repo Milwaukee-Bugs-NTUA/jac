@@ -6,10 +6,12 @@ import logging
 import socket
 import sys
 import json
+from node import *
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.disabled = True
+node = None
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -20,6 +22,12 @@ def shutdown_server():
 @app.route('/')
 def health_check():
     return "\nServer is up and running!"
+
+@app.route('/becomeBootstrap')
+def bootstraped():
+    global node
+    node = BootstrapNode(node)
+    return "This node is now the bootstrap node"
 
 @app.route('/query/<key>')
 def query(key):
@@ -50,6 +58,7 @@ if __name__ == "__main__":
     ip = socket.gethostbyname(socket.gethostname())
 
     try:
+        node = Node(ip, sys.argv[1])
         app.run(host=ip, port=sys.argv[1])
     except socket.error:
         print("Port {} is not available".format(sys.argv[1]))
