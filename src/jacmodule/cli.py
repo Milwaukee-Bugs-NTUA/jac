@@ -53,7 +53,8 @@ def join(bnode):
         click.echo(r.text)
         # join request
         if not (ip, str(port)) == bnode:
-            r = requests.put(url + "join/{}/{}".format(ip,port))
+            params = {'ip' : ip, 'port' : str(port)}
+            r = requests.put(url + "join", params= params)
             click.echo(r.text)
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
