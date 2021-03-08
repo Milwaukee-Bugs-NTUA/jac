@@ -93,8 +93,8 @@ def depart():
     global port
     ip = socket.gethostbyname(socket.gethostname())
     url = "http://{}:{}/shutdown".format(ip,port)
-    requests.post(url)
-    click.echo("Departure of node")
+    r = requests.post(url)
+    click.echo(r.text)
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 def overlay():

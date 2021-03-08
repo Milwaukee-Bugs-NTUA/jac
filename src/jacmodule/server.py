@@ -75,9 +75,16 @@ def overlay():
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
     # Notify bootstrap node
-    url = "http://{}:{}/depart/{}".format(node.bnode[0],node.bnode[1],node.key)
-    r = requests.delete(url)
-    shutdown_server()
+    global node
+    if node.is_bootstrap():
+        if len(node.nodes) == 1:
+            shutdown_server()
+        else:
+            return "Please shutdown all the other nodes first."
+    else:
+        url = "http://{}:{}/depart/{}".format(node.bnode[0],node.bnode[1],node.key)
+        r = requests.delete(url)
+        shutdown_server()
     return 'Server shutting down...\n'  
 
 if __name__ == "__main__":
