@@ -10,7 +10,7 @@ class Node():
     def __init__(self, ip, port, bnode):
         self.ip = ip
         self.port = port
-        self.key = hashlib.sha1(str.encode("{}:{}".format(ip, port)))
+        self.key = hashlib.sha1(str.encode("{}:{}".format(ip, port))).hexdigest()
         self.bnode = bnode
 
     def set_next(self,next_node):
@@ -33,8 +33,13 @@ class BootstrapNode(Node):
         self.number_of_nodes += 1
         
     def add_node(self, ip, port):
-        self.nodes[hashlib.sha1(str.encode("{}:{}".format(ip, port)))] = (ip, port)
-        self.number_of_nodes += 1
+        keynode = hashlib.sha1(str.encode("{}:{}".format(ip, port))).hexdigest()
+        if not keynode in  self.nodes:
+            self.nodes[keynode] = (ip, port)
+            self.number_of_nodes += 1
+            return keynode
+        else:
+            return ""
 
     def find_next(self, keynode):
         temp = self.nodes.keys()
@@ -44,5 +49,10 @@ class BootstrapNode(Node):
                 return self.nodes[temp[(index + 1) % self.number_of_nodes]]
 
     def delete_node(self, keynode):
-        self.number_of_nodes -= 1
-        del self.nodes[keynode]
+        if keynode in self.nodes:
+            self.number_of_nodes -= 1
+            del self.nodes[keynode]
+            return keynode
+        else:
+            return ""
+            

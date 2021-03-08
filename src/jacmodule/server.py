@@ -28,12 +28,28 @@ def health_check():
 def join(ip, port):
     global node
     if node.is_bootstrap():
-        node.add_node(ip, port)
-        return "Node added successfully!"
+        res = node.add_node(ip, port)
+        if not res == "":
+            return "Node added successfully!"
+        else:
+            return "Node is already inside chord."
     else:
         # Communicate with bootstrap node
         url = "http://{}:{}/join/{}/{}".format(node.bnode[0],node.bnode[1],node.ip,node.port)
         return requests.put(url).text
+
+@app.route('/depart/<keynode>', methods=['DELETE'])
+def depart(keynode):
+    global node
+    if node.is_bootstrap():
+        res = node.delete_node(keynode)
+        if not res == "":
+            return "Node is not part of chord!"
+        else:
+            return "Node deleted succesfully!"
+    else:
+        # Communicate with bootstrap node
+        return "I'm the bootstrap node! Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
 
 @app.route("/dummy")
 def dummy():
@@ -58,6 +74,9 @@ def overlay():
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
+    # Notify bootstrap node
+    url = "http://{}:{}/depart/{}".format(node.bnode[0],node.bnode[1],node.key)
+    r = requests.delete(url)
     shutdown_server()
     return 'Server shutting down...\n'  
 
