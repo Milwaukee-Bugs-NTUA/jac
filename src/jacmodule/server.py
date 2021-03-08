@@ -24,10 +24,12 @@ def health_check():
     global node
     return "\nServer is up and running in {}:{} !".format(node.ip,node.port)
 
-@app.route('/join/<ip>/<port>', methods=['PUT'])
-def join(ip, port):
+@app.route('/join', methods=['PUT'])
+def join():
     global node
     if node.is_bootstrap():
+        ip = request.args.get("ip")
+        port = request.args.get("port")
         res = node.add_node(ip, port)
         if not res == "":
             return "Node added successfully!"
@@ -35,13 +37,14 @@ def join(ip, port):
             return "Node is already inside chord."
     else:
         # Communicate with bootstrap node
-        url = "http://{}:{}/join/{}/{}".format(node.bnode[0],node.bnode[1],node.ip,node.port)
-        return requests.put(url).text
+        url = "http://{}:{}/join".format(node.bnode[0],node.bnode[1])
+        return requests.put(url, params={"ip":node.ip,"port":str(node.port)}).text
 
-@app.route('/depart/<keynode>', methods=['DELETE'])
-def depart(keynode):
+@app.route('/depart', methods=['DELETE'])
+def depart():
     global node
     if node.is_bootstrap():
+        keynode = request.args.get("keynode")
         res = node.delete_node(keynode)
         if not res == "":
             return "Node is not part of chord!"
@@ -56,17 +59,21 @@ def dummy():
     global node
     return "{} Nodes\n{}\n".format(node.number_of_nodes,str(node.nodes))
 
-@app.route('/query/<key>')
-def query(key):
-    return "Key pair ({key}, 42)\n".format(key)
+@app.route('/query')
+def query():
+    key = request.args.get("key")
+    return "Key pair ({}, 42)\n".format(key)
 
-@app.route('/insert/<key>/<value>')
-def insert(key, value):
-    return "Inserted keypair ({key},{value})!\n".format(key,value)
+@app.route('/insert')
+def insert():
+    key = request.args.get("key")
+    value = request.args.get("value")
+    return "Inserted keypair ({},{})!".format(key,value)
 
-@app.route('/delete/<key>')
-def delete(key):
-    return 'Deleted key <key>!\n'
+@app.route('/delete')
+def delete():
+    key = request.args.get("key")  
+    return 'Deleted key {}!'.format(key)
 
 @app.route('/overlay')
 def overlay():
@@ -82,8 +89,8 @@ def shutdown():
         else:
             return "Please shutdown all the other nodes first."
     else:
-        url = "http://{}:{}/depart/{}".format(node.bnode[0],node.bnode[1],node.key)
-        r = requests.delete(url)
+        url = "http://{}:{}/depart".format(node.bnode[0],node.bnode[1])
+        r = requests.delete(url,params={"keynode":node.key})
         shutdown_server()
     return 'Server shutting down...\n'  
 
