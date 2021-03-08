@@ -20,7 +20,8 @@ def cli():
     pass
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
-def join():
+@click.option('-b','--bootstrap-node','bnode', type=(str, str))
+def join(bnode):
     """
         Inserts a new node.
     """
@@ -37,7 +38,7 @@ def join():
 
     pid = os.fork()
     if pid == 0:
-        os.execle("./server.py","server.py",str(port),os.environ)
+        os.execle("./server.py","server.py",str(port),bnode[0],bnode[1],os.environ)
         # Unreachable statement. 
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
@@ -50,6 +51,10 @@ def join():
             except requests.exceptions.ConnectionError:
                 pass
         click.echo(r.text)
+        # join request
+        if not (ip, str(port)) == bnode:
+            r = requests.put(url + "join/{}/{}".format(ip,port))
+            click.echo(r.text)
 
 @cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')

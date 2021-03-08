@@ -2,6 +2,7 @@
 
 from flask import Flask
 from flask import request
+import requests
 import logging
 import socket
 import sys
@@ -11,7 +12,6 @@ from node import *
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.disabled = True
-node = None
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -21,13 +21,24 @@ def shutdown_server():
 
 @app.route('/')
 def health_check():
-    return "\nServer is up and running!"
-
-@app.route('/becomeBootstrap')
-def bootstraped():
     global node
-    node = BootstrapNode(node)
-    return "This node is now the bootstrap node"
+    return "\nServer is up and running in {}:{} !".format(node.ip,node.port)
+
+@app.route('/join/<ip>/<port>', methods=['PUT'])
+def join(ip, port):
+    global node
+    if node.is_bootstrap():
+        node.add_node(ip, port)
+        return "Node added successfully!"
+    else:
+        # Communicate with bootstrap node
+        url = "http://{}:{}/join/{}/{}".format(node.bnode[0],node.bnode[1],node.ip,node.port)
+        return requests.put(url).text
+
+@app.route("/dummy")
+def dummy():
+    global node
+    return "{} Nodes\n{}\n".format(node.number_of_nodes,str(node.nodes))
 
 @app.route('/query/<key>')
 def query(key):
@@ -56,10 +67,16 @@ if __name__ == "__main__":
         print("Please provide available port number")
         exit()
     ip = socket.gethostbyname(socket.gethostname())
+    port = sys.argv[1]
+    bnode_ip = sys.argv[2]
+    bnode_port = sys.argv[3]
 
     try:
-        node = Node(ip, sys.argv[1])
-        app.run(host=ip, port=sys.argv[1])
+        if (ip, port) == (bnode_ip,bnode_port):
+            node = BootstrapNode(ip, port)
+        else:
+            node = Node(ip, port, (bnode_ip, bnode_port))
+        app.run(host=ip, port=port)
     except socket.error:
         print("Port {} is not available".format(sys.argv[1]))
         exit()
