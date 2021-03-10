@@ -34,7 +34,7 @@ class BootstrapNode(Node):
         
     def add_node(self, ip, port):
         keynode = hashlib.sha1(str.encode("{}:{}".format(ip, port))).hexdigest()
-        if not keynode in  self.nodes:
+        if not keynode in self.nodes:
             self.nodes[keynode] = (ip, port)
             self.number_of_nodes += 1
             return keynode

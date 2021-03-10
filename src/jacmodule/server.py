@@ -11,7 +11,7 @@ from node import *
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
-log.disabled = True
+#log.disabled = True
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -21,38 +21,62 @@ def shutdown_server():
 
 @app.route('/')
 def health_check():
-    global node
-    return "\nServer is up and running in {}:{} !".format(node.ip,node.port)
+    global ip, port
+    return "\nServer is up and running in {}:{} !".format(ip,port)
 
 @app.route('/join', methods=['PUT'])
 def join():
+    global node, ip, port
+    bnode_ip = request.args.get("ip")
+    bnode_port = request.args.get("port")
+
+    if ip == bnode_ip and port == bnode_port:
+        node = BootstrapNode(ip, port)
+        return "Bootstrap node is already inside chord"
+    else:
+        node = Node(ip, port, (bnode_ip, bnode_port))
+        # Communicate with bootstrap node
+        url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
+        return requests.put(url, params={"ip":node.ip,"port":str(node.port)}).text
+
+@app.route('/addNode', methods=['PUT'])
+def add_node():
     global node
     if node.is_bootstrap():
         ip = request.args.get("ip")
         port = request.args.get("port")
         res = node.add_node(ip, port)
-        if not res == "":
-            return "Node added successfully!"
-        else:
+        if res == "":
             return "Node is already inside chord."
+        else:
+            return "Node added successfully!"
     else:
-        # Communicate with bootstrap node
-        url = "http://{}:{}/join".format(node.bnode[0],node.bnode[1])
-        return requests.put(url, params={"ip":node.ip,"port":str(node.port)}).text
+        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
 
 @app.route('/depart', methods=['DELETE'])
 def depart():
     global node
     if node.is_bootstrap():
+        return "Bootstrap node is not allowed to depart!"
+    else:
+        # Communicate with bootstrap node
+        url = "http://{}:{}/removeNode".format(node.bnode[0],node.bnode[1])
+        return requests.delete(url, params={"keynode":node.key}).text
+
+@app.route('/removeNode', methods=['DELETE'])
+def remove_node():
+    global node
+    if node.is_bootstrap():
         keynode = request.args.get("keynode")
+        if keynode == str(node.key):
+            return "Bootstrap node is not allowed to depart!"
         res = node.delete_node(keynode)
-        if not res == "":
+        if res == "":
             return "Node is not part of chord!"
         else:
             return "Node deleted succesfully!"
     else:
-        # Communicate with bootstrap node
-        return "I'm the bootstrap node! Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
+        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
 
 @app.route("/dummy")
 def dummy():
@@ -92,23 +116,19 @@ def shutdown():
         url = "http://{}:{}/depart".format(node.bnode[0],node.bnode[1])
         r = requests.delete(url,params={"keynode":node.key})
         shutdown_server()
-    return 'Server shutting down...\n'  
+    return 'Server shutting down...'  
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 2:
-        print("Please provide available port number")
+    if not len(sys.argv) == 2:
+        print("Please provide available port number & bootstrap option")
         exit()
+
     ip = socket.gethostbyname(socket.gethostname())
     port = sys.argv[1]
-    bnode_ip = sys.argv[2]
-    bnode_port = sys.argv[3]
+    node = None
 
     try:
-        if (ip, port) == (bnode_ip,bnode_port):
-            node = BootstrapNode(ip, port)
-        else:
-            node = Node(ip, port, (bnode_ip, bnode_port))
         app.run(host=ip, port=port)
     except socket.error:
         print("Port {} is not available".format(sys.argv[1]))

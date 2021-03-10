@@ -3,9 +3,11 @@
 import click
 import cmd
 from pyfiglet import Figlet
-import subprocess as sp
+import socket
+import requests
+import os
 
-from cli import *
+import cli
 
 class JacShell(cmd.Cmd):
 
@@ -15,13 +17,15 @@ class JacShell(cmd.Cmd):
         # Don't use default help of cmd library
         self.default("help " + line)
 
-    def do_exit(self, inp):
-        click.echo("\nExiting jac shell...")
+    def do_exit(self, line):
+        #Not working for edge case
+        self.default("exit " + line)
+        click.echo("Exiting jac shell...")
         return True
 
     def default(self, line):
         args = line.split()
-        subcommand = cli.commands.get(args[0])
+        subcommand = cli.cli_group.commands.get(args[0])
         if subcommand:
             try:
                 subcommand.main(args[1:],prog_name=args[0],standalone_mode = False)
@@ -48,11 +52,47 @@ class JacShell(cmd.Cmd):
     # For using Ctrl-D as exit shortcut
     do_EOF = do_exit
 
+def port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((cli.ip, port)) == 0
+
+def start_server():
+    # Find available port
+    for p in range(5000,5100):
+        if port_in_use(p) == 0:
+            cli.port = p
+            break
+
+    if cli.port == None:
+        click.echo("Couldn't find available port for jac server.")
+        click.echo("Please try again later")
+        return False
+
+    pid = os.fork()
+    if pid == 0:
+        os.execle("./server.py","server.py",str(cli.port),os.environ)
+        # Unreachable statement. 
+        # Executed only if exec fails
+        click.echo("Couldn't start jac server")     
+    else:
+        url = "http://{}:{}/".format(cli.ip,cli.port)
+        while True:
+            try:
+                r = requests.get(url)
+                break
+            except requests.exceptions.ConnectionError:
+                pass
+        click.echo(r.text)
+    
+    return True
+
 def main():
     f = Figlet(font='slant')
     click.echo(f.renderText('J. A. C.'))
     click.echo("🎯 Just Another Chord implementation. 🎯\n")
 
+    if not start_server():
+        exit() 
     jacshell = JacShell()
     try:
         jacshell.cmdloop()
