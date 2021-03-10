@@ -32,7 +32,7 @@ def join():
 
     if ip == bnode_ip and port == bnode_port:
         node = BootstrapNode(ip, port)
-        return "Bootstrap node is already inside chord"
+        return "New chord created"
     else:
         node = Node(ip, port, (bnode_ip, bnode_port))
         # Communicate with bootstrap node
