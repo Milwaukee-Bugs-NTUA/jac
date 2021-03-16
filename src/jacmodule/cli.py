@@ -15,7 +15,7 @@ def cli_group():
     pass
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-b','--bootstrap-node','bnode', type=(str, str))
+@click.option('-b','--bootstrap-node','bnode', type=(str, str),metavar='<ip> <port>', help='Specify bootstrap node of chord')
 def join(bnode):
     """
         Inserts a new node.
