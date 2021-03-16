@@ -42,9 +42,36 @@ def join():
             data = r.json()
             node.previous_node = (data["previous"]["ip"],int(data["previous"]["port"]))
             node.next_node = (data["next"]["ip"],int(data["next"]["port"]))
+            # Inform neighboors
+            # Inform previous
+            url = "http://{}:{}/changeNext".format(node.previous_node[0],node.previous_node[1])
+            r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
+            # Inform next
+            url = "http://{}:{}/changePrevious".format(node.next_node[0],node.next_node[1])
+            r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
             return "New node added successfully!"
         else:
             return r.text
+
+@app.route('/changeNext',methods=['PUT'])
+def change_next():
+    new_ip = request.args.get("ip")
+    new_port = request.args.get("port")
+    if not new_ip == node.ip and not node.port == new_port:
+        node.next_node = (new_ip,int(new_port))
+    else:
+        node.next_node = None
+    return "Changed next node"
+
+@app.route('/changePrevious',methods=['PUT'])
+def change_previous():
+    new_ip = request.args.get("ip")
+    new_port = request.args.get("port")
+    if not new_ip == node.ip and not node.port == new_port:
+        node.previous_node = (new_ip,int(new_port))
+    else:
+        node.previous_node = None
+    return "Changed previous node"
 
 @app.route('/addNode', methods=['PUT'])
 def add_node():
@@ -75,7 +102,17 @@ def depart():
     else:
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode[0],node.bnode[1])
-        return requests.delete(url, params={"keynode":node.key}).text
+        r = requests.delete(url, params={"keynode":node.key})
+        # Inform neighboors
+        # Inform Previous
+        url = "http://{}:{}/changeNext".format(node.previous_node[0],node.previous_node[1])
+        requests.put(url, params={"ip":node.next_node[0],"port":str(node.next_node[1])})
+        # Inform Next
+        url = "http://{}:{}/changePrevious".format(node.next_node[0],node.next_node[1])
+        requests.put(url, params={"ip":node.previous_node[0],"port":str(node.previous_node[1])})
+
+        return r.text
+
 
 @app.route('/removeNode', methods=['DELETE'])
 def remove_node():
