@@ -2,6 +2,12 @@
 
 import hashlib
 
+class ReferenceNode():
+    def __init__(self,ip,port):
+        self.ip = ip
+        self.port = port
+        self.key = hashlib.sha1(str.encode("{}:{}".format(ip, port))).hexdigest()
+
 class Node():
     data = {}
     next_node = None
@@ -11,16 +17,10 @@ class Node():
         self.ip = ip
         self.port = port
         self.key = hashlib.sha1(str.encode("{}:{}".format(ip, port))).hexdigest()
-        self.bnode = bnode
-
-    def set_next(self,next_node):
-        self.next_node = next_node
-
-    def set_previous(self,previous):
-        self.previous_node = previous_node
+        self.bnode = referenceNode(bnode[0],bnode[1])
 
     def is_bootstrap(self):
-        return (self.ip,self.port) == self.bnode
+        return self.key == self.bnode.key
 
 class BootstrapNode(Node):
 

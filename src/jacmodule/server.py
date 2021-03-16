@@ -28,7 +28,7 @@ def health_check():
 def join():
     global node, ip, port
     bnode_ip = request.args.get("ip")
-    bnode_port = request.args.get("port")
+    bnode_port = int(request.args.get("port"))
 
     if ip == bnode_ip and port == bnode_port:
         node = BootstrapNode(ip, port)
@@ -37,18 +37,18 @@ def join():
         node = Node(ip, port, (bnode_ip, bnode_port))
         # Communicate with bootstrap node
         url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
-        r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
+        r = requests.put(url, params={"ip":node.ip,"port":node.port})
         if r.status_code == 200:
             data = r.json()
-            node.previous_node = (data["previous"]["ip"],int(data["previous"]["port"]))
-            node.next_node = (data["next"]["ip"],int(data["next"]["port"]))
+            node.previous_node = referenceNode(data["previous"]["ip"],int(data["previous"]["port"]))
+            node.next_node = referenceNode(data["next"]["ip"],int(data["next"]["port"]))
             # Inform neighboors
             # Inform previous
-            url = "http://{}:{}/changeNext".format(node.previous_node[0],node.previous_node[1])
-            r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
+            url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
+            r = requests.put(url, params={"ip":node.ip,"port":node.port})
             # Inform next
-            url = "http://{}:{}/changePrevious".format(node.next_node[0],node.next_node[1])
-            r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
+            url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
+            r = requests.put(url, params={"ip":node.ip,"port":node.port})
             return "New node added successfully!"
         else:
             return r.text
@@ -56,21 +56,21 @@ def join():
 @app.route('/changeNext',methods=['PUT'])
 def change_next():
     new_ip = request.args.get("ip")
-    new_port = request.args.get("port")
+    new_port = int(request.args.get("port"))
     if new_ip == node.ip and node.port == new_port:
         node.next_node = None
     else:
-        node.next_node = (new_ip,int(new_port))
+        node.next_node = referenceNode(new_ip,new_port)
     return "Changed next node"
 
 @app.route('/changePrevious',methods=['PUT'])
 def change_previous():
     new_ip = request.args.get("ip")
-    new_port = request.args.get("port")
+    new_port = int(request.args.get("port"))
     if new_ip == node.ip and node.port == new_port:
         node.previous_node = None
     else:
-        node.previous_node = (new_ip,int(new_port))
+        node.previous_node = referenceNode(new_ip,new_port)
     return "Changed previous node"
 
 @app.route('/addNode', methods=['PUT'])
@@ -78,7 +78,7 @@ def add_node():
     global node
     if node.is_bootstrap():
         ip = request.args.get("ip")
-        port = request.args.get("port")
+        port = int(request.args.get("port"))
         keynode = node.add_node(ip, port)
         if keynode == "":
             return "Node is already inside chord.", 405
@@ -92,7 +92,7 @@ def add_node():
             )
             return response
     else:
-        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
+        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode.ip,node.bnode.port), 301
 
 @app.route('/depart', methods=['DELETE'])
 def depart():
@@ -101,15 +101,15 @@ def depart():
         return "Bootstrap node is not allowed to depart!"
     else:
         # Communicate with bootstrap node
-        url = "http://{}:{}/removeNode".format(node.bnode[0],node.bnode[1])
+        url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
         r = requests.delete(url, params={"keynode":node.key})
         # Inform neighboors
         # Inform Previous
-        url = "http://{}:{}/changeNext".format(node.previous_node[0],node.previous_node[1])
-        requests.put(url, params={"ip":node.next_node[0],"port":str(node.next_node[1])})
+        url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
+        requests.put(url, params={"ip":node.next_node.ip,"port":node.next_node.port})
         # Inform Next
-        url = "http://{}:{}/changePrevious".format(node.next_node[0],node.next_node[1])
-        requests.put(url, params={"ip":node.previous_node[0],"port":str(node.previous_node[1])})
+        url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
+        requests.put(url, params={"ip":node.previous_node.ip,"port":node.previous_node.port})
 
         return r.text
 
@@ -119,7 +119,7 @@ def remove_node():
     global node
     if node.is_bootstrap():
         keynode = request.args.get("keynode")
-        if keynode == str(node.key):
+        if keynode == node.key:
             return "Bootstrap node is not allowed to depart!"
         res = node.delete_node(keynode)
         if res == "":
@@ -127,7 +127,7 @@ def remove_node():
         else:
             return "Node deleted succesfully!"
     else:
-        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
+        return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode.ip,node.bnode.port), 301
 
 @app.route('/query')
 def query():
@@ -156,7 +156,7 @@ def overlay():
             response_text += "'{}': {}\n".format(str(n),node.nodes[n])
         return response_text
     else:
-        url = "http://{}:{}/overlay".format(node.bnode[0],node.bnode[1])
+        url = "http://{}:{}/overlay".format(node.bnode.ip,node.bnode.port)
         r = requests.get(url)
         return r.text
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
         exit()
 
     ip = socket.gethostbyname(socket.gethostname())
-    port = sys.argv[1]
+    port = int(sys.argv[1])
     node = None
 
     try:
