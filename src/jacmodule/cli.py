@@ -59,8 +59,10 @@ def insert(key, value):
     """
         Inserts the pair (<key>, <value>).
     """
-    click.echo("Insert key {} with value {}".format(key,value))
-    raise NotImplementedError
+    global ip, port
+    url = "http://{}:{}/insert".format(ip,port)
+    r = requests.post(url, params={"key":key,"value":value})
+    click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')

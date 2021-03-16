@@ -40,8 +40,8 @@ def join():
         r = requests.put(url, params={"ip":node.ip,"port":node.port})
         if r.status_code == 200:
             data = r.json()
-            node.previous_node = referenceNode(data["previous"]["ip"],int(data["previous"]["port"]))
-            node.next_node = referenceNode(data["next"]["ip"],int(data["next"]["port"]))
+            node.previous_node = ReferenceNode(data["previous"]["ip"],int(data["previous"]["port"]))
+            node.next_node = ReferenceNode(data["next"]["ip"],int(data["next"]["port"]))
             # Inform neighboors
             # Inform previous
             url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
@@ -60,7 +60,7 @@ def change_next():
     if new_ip == node.ip and node.port == new_port:
         node.next_node = None
     else:
-        node.next_node = referenceNode(new_ip,new_port)
+        node.next_node = ReferenceNode(new_ip,new_port)
     return "Changed next node"
 
 @app.route('/changePrevious',methods=['PUT'])
@@ -70,7 +70,7 @@ def change_previous():
     if new_ip == node.ip and node.port == new_port:
         node.previous_node = None
     else:
-        node.previous_node = referenceNode(new_ip,new_port)
+        node.previous_node = ReferenceNode(new_ip,new_port)
     return "Changed previous node"
 
 @app.route('/addNode', methods=['PUT'])
@@ -80,7 +80,7 @@ def add_node():
         ip = request.args.get("ip")
         port = int(request.args.get("port"))
         keynode = node.add_node(ip, port)
-        if keynode == "":
+        if keynode == -1:
             return "Node is already inside chord.", 405
         else:
             prev_node, next_node = node.find_neighboors(keynode)
@@ -110,7 +110,7 @@ def depart():
         # Inform Next
         url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
         requests.put(url, params={"ip":node.previous_node.ip,"port":node.previous_node.port})
-
+        node = None
         return r.text
 
 
@@ -118,11 +118,11 @@ def depart():
 def remove_node():
     global node
     if node.is_bootstrap():
-        keynode = request.args.get("keynode")
+        keynode = int(request.args.get("keynode"))
         if keynode == node.key:
             return "Bootstrap node is not allowed to depart!"
         res = node.delete_node(keynode)
-        if res == "":
+        if res == -1:
             return "Node is not part of chord!"
         else:
             return "Node deleted succesfully!"
@@ -134,11 +134,22 @@ def query():
     key = request.args.get("key")
     return "Key pair ({}, 42)\n".format(key)
 
-@app.route('/insert')
+@app.route('/insert',methods=['POST'])
 def insert():
-    key = request.args.get("key")
+    global node
+    key_value = request.args.get("key")
     value = request.args.get("value")
-    return "Inserted keypair ({},{})!".format(key,value)
+    
+    successor = node.successor(key_value)
+    if successor.key == node.key:
+        # Add key here
+        node.data[hash_key(key_value)] = value
+        return "Key added successfully to node {}!".format(node.key)
+    else:
+        # Send key to successor
+        url = "http://{}:{}/insert".format(successor.ip,successor.port)
+        r = requests.post(url,params={"key":key_value,"value":value})
+        return r.text
 
 @app.route('/delete')
 def delete():
@@ -153,7 +164,7 @@ def overlay():
         l = list(node.nodes.keys())
         l.sort()
         for n in l:
-            response_text += "'{}': {}\n".format(str(n),node.nodes[n])
+            response_text += "{}: {}\n".format(n,node.nodes[n])
         return response_text
     else:
         url = "http://{}:{}/overlay".format(node.bnode.ip,node.bnode.port)
@@ -164,15 +175,16 @@ def overlay():
 def shutdown():
     # Notify bootstrap node
     global node
-    if node.is_bootstrap():
-        if node.number_of_nodes == 1:
-            shutdown_server()
+    if not node == None:
+        if node.is_bootstrap():
+            if node.number_of_nodes == 1:
+                shutdown_server()
+            else:
+                return "Please shutdown all the other nodes first."
         else:
-            return "Please shutdown all the other nodes first."
-    else:
-        url = "http://{}:{}/depart".format(node.ip,node.port)
-        r = requests.delete(url)
-        shutdown_server()
+            url = "http://{}:{}/depart".format(node.ip,node.port)
+            r = requests.delete(url)
+    shutdown_server()
     return 'Server shutting down...'  
 
 if __name__ == "__main__":
