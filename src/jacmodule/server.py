@@ -57,20 +57,20 @@ def join():
 def change_next():
     new_ip = request.args.get("ip")
     new_port = request.args.get("port")
-    if not new_ip == node.ip and not node.port == new_port:
-        node.next_node = (new_ip,int(new_port))
-    else:
+    if new_ip == node.ip and node.port == new_port:
         node.next_node = None
+    else:
+        node.next_node = (new_ip,int(new_port))
     return "Changed next node"
 
 @app.route('/changePrevious',methods=['PUT'])
 def change_previous():
     new_ip = request.args.get("ip")
     new_port = request.args.get("port")
-    if not new_ip == node.ip and not node.port == new_port:
-        node.previous_node = (new_ip,int(new_port))
-    else:
+    if new_ip == node.ip and node.port == new_port:
         node.previous_node = None
+    else:
+        node.previous_node = (new_ip,int(new_port))
     return "Changed previous node"
 
 @app.route('/addNode', methods=['PUT'])
@@ -132,7 +132,12 @@ def remove_node():
 @app.route("/dummy")
 def dummy():
     global node
-    return "{} Nodes\n{}\n".format(node.number_of_nodes,str(node.nodes))
+    response_text = "{} Nodes\n".format(node.number_of_nodes)
+    l = list(node.nodes.keys())
+    l.sort()
+    for n in l:
+        response_text += "'{}': {}\n".format(str(n),node.nodes[n])
+    return response_text
 
 @app.route('/query')
 def query():
@@ -159,13 +164,13 @@ def shutdown():
     # Notify bootstrap node
     global node
     if node.is_bootstrap():
-        if len(node.nodes) == 1:
+        if node.number_of_nodes == 1:
             shutdown_server()
         else:
             return "Please shutdown all the other nodes first."
     else:
-        url = "http://{}:{}/depart".format(node.bnode[0],node.bnode[1])
-        r = requests.delete(url,params={"keynode":node.key})
+        url = "http://{}:{}/depart".format(node.ip,node.port)
+        r = requests.delete(url)
         shutdown_server()
     return 'Server shutting down...'  
 
