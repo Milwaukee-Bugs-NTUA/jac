@@ -15,14 +15,31 @@ def cli_group():
     pass
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-b','--bootstrap-node','bnode', type=(str, str),metavar='<ip> <port>', help='Specify bootstrap node of chord')
+@click.option('-b','--bootstrap-node','bnode',required=False, nargs=2,type=str,metavar='<ip> <port>', help='Specify bootstrap node of chord')
 def join(bnode):
     """
         Inserts a new node.
     """
     global ip, port
     url = "http://{}:{}/".format(ip,port)
-    params = {'ip' : bnode[0], 'port' : bnode[1]}
+    if not bnode == ():
+        with open(".jacserver.cfg","w") as f:
+                f.write("{} {}".format(bnode[0],bnode[1]))
+        params = {'ip' : bnode[0], 'port' : bnode[1]}
+    else:
+        if os.path.exists(".jacserver.cfg"):
+            with open(".jacserver.cfg","r") as f:
+                line = f.readline().split()
+                if line == []:
+                    click.echo("Please provide a bootstrap node")
+                    return
+                bnode_ip = line[0]
+                bnode_port = line[1]
+            params = {'ip' : bnode_ip, 'port' : bnode_port}
+        else:
+            click.echo("Please provide a bootstrap node")
+            return
+    
     r = requests.put(url + "join", params=params)
     click.echo(r.text)
 
