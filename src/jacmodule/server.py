@@ -37,7 +37,14 @@ def join():
         node = Node(ip, port, (bnode_ip, bnode_port))
         # Communicate with bootstrap node
         url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
-        return requests.put(url, params={"ip":node.ip,"port":str(node.port)}).text
+        r = requests.put(url, params={"ip":node.ip,"port":str(node.port)})
+        if r.status_code == 200:
+            data = r.json()
+            node.previous_node = (data["previous"]["ip"],int(data["previous"]["port"]))
+            node.next_node = (data["next"]["ip"],int(data["next"]["port"]))
+            return "New node added successfully!"
+        else:
+            return r.text
 
 @app.route('/addNode', methods=['PUT'])
 def add_node():
@@ -45,11 +52,18 @@ def add_node():
     if node.is_bootstrap():
         ip = request.args.get("ip")
         port = request.args.get("port")
-        res = node.add_node(ip, port)
-        if res == "":
-            return "Node is already inside chord."
+        keynode = node.add_node(ip, port)
+        if keynode == "":
+            return "Node is already inside chord.", 405
         else:
-            return "Node added successfully!"
+            prev_node, next_node = node.find_neighboors(keynode)
+            data = {"previous":{"ip":prev_node[0],"port":prev_node[1]}, "next":{"ip":next_node[0],"port":next_node[1]}}
+            response = app.response_class(
+                response=json.dumps(data),
+                status=200,
+                mimetype='application/json'
+            )
+            return response
     else:
         return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
 

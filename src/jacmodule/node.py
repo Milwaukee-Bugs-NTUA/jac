@@ -41,12 +41,17 @@ class BootstrapNode(Node):
         else:
             return ""
 
-    def find_next(self, keynode):
-        temp = self.nodes.keys()
+    def next_index(self, index):
+            return (index + 1) % self.number_of_nodes
+    def previous_index(self, index):
+            return (abs(index - 1)) % self.number_of_nodes
+
+    def find_neighboors(self, keynode):
+        temp = list(self.nodes.keys())
         temp.sort()
         for index, key in enumerate(temp):
             if key == keynode:
-                return self.nodes[temp[(index + 1) % self.number_of_nodes]]
+                return self.nodes[temp[self.previous_index(index)]], self.nodes[temp[self.next_index(index)]]
 
     def delete_node(self, keynode):
         if keynode in self.nodes:
