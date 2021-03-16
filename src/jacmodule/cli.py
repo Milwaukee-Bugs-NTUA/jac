@@ -79,8 +79,10 @@ def overlay():
     """
         Displays current network topology.
     """
-    click.echo("Overlay")
-    raise NotImplementedError
+    click.echo("Chord Architecture")
+    url = "http://{}:{}/overlay".format(ip,port)
+    r = requests.get(url)
+    click.echo(r.text)
 
 #   Dummy command, just for
 #   showing up in cli help message
@@ -89,7 +91,7 @@ def help():
     """
         Prints a help message for all jac commands.
     """
-    with click.Context(cli) as ctx:
+    with click.Context(cli_group) as ctx:
         click.echo(cli_group.get_help(ctx))
     return 0
 

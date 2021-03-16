@@ -129,16 +129,6 @@ def remove_node():
     else:
         return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode[0],node.bnode[1]), 301
 
-@app.route("/dummy")
-def dummy():
-    global node
-    response_text = "{} Nodes\n".format(node.number_of_nodes)
-    l = list(node.nodes.keys())
-    l.sort()
-    for n in l:
-        response_text += "'{}': {}\n".format(str(n),node.nodes[n])
-    return response_text
-
 @app.route('/query')
 def query():
     key = request.args.get("key")
@@ -157,7 +147,18 @@ def delete():
 
 @app.route('/overlay')
 def overlay():
-    return 'Suppose that this is the topology!\n'
+    global node
+    if node.is_bootstrap():
+        response_text = "{} Nodes\n".format(node.number_of_nodes)
+        l = list(node.nodes.keys())
+        l.sort()
+        for n in l:
+            response_text += "'{}': {}\n".format(str(n),node.nodes[n])
+        return response_text
+    else:
+        url = "http://{}:{}/overlay".format(node.bnode[0],node.bnode[1])
+        r = requests.get(url)
+        return r.text
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
