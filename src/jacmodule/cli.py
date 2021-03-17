@@ -49,8 +49,10 @@ def query(key):
     """
         Finds the value of <key>.
     """
-    click.echo("Query for key {}".format(key))
-    raise NotImplementedError
+    global ip, port
+    url = "http://{}:{}/query".format(ip,port)
+    r = requests.get(url, params={"key":key})
+    click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')

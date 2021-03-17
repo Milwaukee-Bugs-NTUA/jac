@@ -131,8 +131,22 @@ def remove_node():
 
 @app.route('/query')
 def query():
-    key = request.args.get("key")
-    return "Key pair ({}, 42)\n".format(key)
+    global node
+    key_value = request.args.get("key")
+    key = hash_key(key_value)
+    
+    successor = node.successor(key_value)
+    if successor.key == node.key:
+        # Add key here
+        if key in node.data:
+            return "Key/Value pair ({},{}) found in node {}:{}!".format(key_value,node.data[key],node.ip,node.port)
+        else:
+            return "Key not found",404
+    else:
+        # Send key to successor
+        url = "http://{}:{}/query".format(successor.ip,successor.port)
+        r = requests.get(url,params={"key":key_value})
+        return r.text
 
 @app.route('/insert',methods=['POST'])
 def insert():
@@ -144,7 +158,7 @@ def insert():
     if successor.key == node.key:
         # Add key here
         node.data[hash_key(key_value)] = value
-        return "Key added successfully to node {}!".format(node.key)
+        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
     else:
         # Send key to successor
         url = "http://{}:{}/insert".format(successor.ip,successor.port)
