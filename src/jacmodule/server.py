@@ -3,6 +3,7 @@
 from flask import Flask
 from flask import request
 import requests
+from requests.adapters import HTTPAdapter
 import logging
 import socket
 import sys
@@ -144,13 +145,15 @@ def query():
             return "Key not found",404
     else:
         # Send key to successor
+        s = requests.Session()
+        s.mount('http://', HTTPAdapter(max_retries=0))
         url = "http://{}:{}/query".format(successor.ip,successor.port)
-        r = requests.get(url,params={"key":key_value})
+        r = s.get(url,params={"key":key_value})
         return r.text
 
 @app.route('/insert',methods=['POST'])
 def insert():
-    global node
+    global node    
     key_value = request.args.get("key")
     value = request.args.get("value")
     
@@ -158,11 +161,13 @@ def insert():
     if successor.key == node.key:
         # Add key here
         node.data[hash_key(key_value)] = value
-        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+        return "{}\nKey added successfully to node {}:{}!".format(hash_key(key_value),node.ip,node.port)
     else:
         # Send key to successor
+        s = requests.Session()
+        s.mount('http://', HTTPAdapter(max_retries=0))
         url = "http://{}:{}/insert".format(successor.ip,successor.port)
-        r = requests.post(url,params={"key":key_value,"value":value})
+        r = s.post(url,params={"key":key_value,"value":value})
         return r.text
 
 @app.route('/delete')
