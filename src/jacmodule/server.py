@@ -189,7 +189,9 @@ def overlay():
 def shutdown():
     # Notify bootstrap node
     global node
-    if not node == None:
+    if node == None:
+        shutdown_server()
+    else:
         if node.is_bootstrap():
             if node.number_of_nodes == 1:
                 shutdown_server()
@@ -198,7 +200,7 @@ def shutdown():
         else:
             url = "http://{}:{}/depart".format(node.ip,node.port)
             r = requests.delete(url)
-    shutdown_server()
+            shutdown_server()
     return 'Server shutting down...'  
 
 if __name__ == "__main__":
