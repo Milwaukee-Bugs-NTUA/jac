@@ -5,6 +5,7 @@ import cmd
 from pyfiglet import Figlet
 import socket
 import requests
+import shlex
 import os
 
 import cli
@@ -24,7 +25,7 @@ class JacShell(cmd.Cmd):
         return True
 
     def default(self, line):
-        args = line.split()
+        args = shlex.split(line)
         subcommand = cli.cli_group.commands.get(args[0])
         if subcommand:
             try:
