@@ -101,6 +101,10 @@ def depart():
     if node.is_bootstrap():
         return "Bootstrap node is not allowed to depart!"
     else:
+        # Send keys to next node
+        data_list = [{"key":key,"value":node.data[key]} for key in node.data]
+        data = {"keys":data_list}
+        r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
         r = requests.delete(url, params={"keynode":node.key})
@@ -123,7 +127,6 @@ def kickout():
         # Communicate with bootstrap node
         node = None
         return "Node object deleted!"
-
 
 @app.route('/removeNode', methods=['DELETE'])
 def remove_node():
@@ -179,6 +182,14 @@ def insert():
         url = "http://{}:{}/insert".format(successor.ip,successor.port)
         r = s.post(url,params={"key":key_value,"value":value})
         return r.text
+
+@app.route('/send',methods=['POST'])
+def send():
+    global node        
+    new_keys = json.loads(request.get_json())["keys"]
+    for d in new_keys:
+        node.data[d["key"]] = d["value"]
+    return "Keys transfered!"
 
 @app.route('/delete', methods=['DELETE'])
 def delete():
