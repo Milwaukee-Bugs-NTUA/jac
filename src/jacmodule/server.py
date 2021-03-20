@@ -114,6 +114,16 @@ def depart():
         node = None
         return r.text
 
+@app.route('/kickout', methods=['DELETE'])
+def kickout():
+    global node
+    if node.is_bootstrap():
+        return "Bootstrap node is not allowed to be excluded!"
+    else:
+        # Communicate with bootstrap node
+        node = None
+        return "Node object deleted!"
+
 
 @app.route('/removeNode', methods=['DELETE'])
 def remove_node():
@@ -218,7 +228,10 @@ def shutdown():
             if node.number_of_nodes == 1:
                 shutdown_server()
             else:
-                return "Please shutdown all the other nodes first."
+                for n in node.nodes:
+                    url = "http://{}:{}/kickout".format(node.nodes[n][0],node.nodes[n][1])
+                    requests.delete(url)
+                    shutdown_server()
         else:
             url = "http://{}:{}/depart".format(node.ip,node.port)
             r = requests.delete(url)
