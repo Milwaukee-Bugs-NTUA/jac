@@ -76,9 +76,9 @@ class BootstrapNode(Node):
             return -1
 
     def next_index(self, index):
-            return (index + 1) % self.number_of_nodes
+        return (index + 1) % self.number_of_nodes
     def previous_index(self, index):
-            return (abs(index - 1)) % self.number_of_nodes
+        return (index - 1) % self.number_of_nodes
 
     def find_neighboors(self, keynode):
         temp = list(self.nodes.keys())
