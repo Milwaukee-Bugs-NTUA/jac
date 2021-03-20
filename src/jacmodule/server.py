@@ -170,10 +170,27 @@ def insert():
         r = s.post(url,params={"key":key_value,"value":value})
         return r.text
 
-@app.route('/delete')
+@app.route('/delete', methods=['DELETE'])
 def delete():
-    key = request.args.get("key")  
-    return 'Deleted key {}!'.format(key)
+    global node
+    key_value = request.args.get("key")
+    key = hash_key(key_value)
+    
+    successor = node.successor(key_value)
+    if successor.key == node.key:
+        # Add key here
+        if key in node.data:
+            del node.data[key]
+            return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+        else:
+            return "Key not found",404
+    else:
+        # Send key to successor
+        s = requests.Session()
+        s.mount('http://', HTTPAdapter(max_retries=0))
+        url = "http://{}:{}/delete".format(successor.ip,successor.port)
+        r = s.delete(url,params={"key":key_value})
+        return r.text
 
 @app.route('/overlay')
 def overlay():

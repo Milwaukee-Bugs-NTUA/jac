@@ -72,8 +72,10 @@ def delete(key):
     """
         Deletes the specified <key>.
     """
-    click.echo("Delete key {}".format(key))
-    raise NotImplementedError
+    global ip, port
+    url = "http://{}:{}/delete".format(ip,port)
+    r = requests.delete(url, params={"key":key})
+    click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 def depart():
