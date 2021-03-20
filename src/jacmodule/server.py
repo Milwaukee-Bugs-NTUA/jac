@@ -40,17 +40,35 @@ def join():
         url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
         r = requests.put(url, params={"ip":node.ip,"port":node.port})
         if r.status_code == 200:
+            
             data = r.json()
             node.previous_node = ReferenceNode(data["previous"]["ip"],int(data["previous"]["port"]))
             node.next_node = ReferenceNode(data["next"]["ip"],int(data["next"]["port"]))
+            
             # Inform neighboors
+            # Receive keys from next
+            url = "http://{}:{}/transferKeys".format(node.next_node.ip,node.next_node.port)
+            r = requests.get(url, params={"keynode":node.key})
+
+            if r.status_code == 200:
+                data = r.json()["keys"]
+                node.data = {d["key"]:d["value"] for d in data}
+            
             # Inform previous
             url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
             r = requests.put(url, params={"ip":node.ip,"port":node.port})
+            
             # Inform next
             url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
             r = requests.put(url, params={"ip":node.ip,"port":node.port})
             return "New node added successfully!"
+
+            # Tell next to delete unnecessary keys
+            url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
+            r = requests.delete(url, params={"keynode":node.key})
+
+            return "New node added successfully!"
+
         else:
             return r.text
 
@@ -190,6 +208,33 @@ def send():
     for d in new_keys:
         node.data[d["key"]] = d["value"]
     return "Keys transfered!"
+
+@app.route('/trasferKeys')
+def transfer_keys():
+    global node        
+    keynode = int(request.args.get("keynode"))
+
+    data_list = [{"key":key,"value":node.data[key]} for key in node.data if key <= keynode or key > node.key]
+    data = {"keys":data_list}
+    
+    if data_list == []:
+        return "No keys to be transfered",204
+    else:
+        response = app.response_class(
+            response=json.dumps(data),
+            status=200,
+            mimetype='application/json'
+        )
+        return response
+
+@app.route('/deleteKeys',methods=['DELETE'])
+def delete_keys():
+    global node        
+    keynode = int(request.args.get("keynode"))
+
+    node.data = {key:node.data[key] for key in node.data if key <= keynode or key > node.key}
+
+    return "Keys deleted"
 
 @app.route('/delete', methods=['DELETE'])
 def delete():
