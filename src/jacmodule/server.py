@@ -123,17 +123,21 @@ def depart():
         data_list = [{"key":key,"value":node.data[key]} for key in node.data]
         data = {"keys":data_list}
         r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
+        
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
         r = requests.delete(url, params={"keynode":node.key})
+        
         # Inform neighboors
         # Inform Previous
         url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
         requests.put(url, params={"ip":node.next_node.ip,"port":node.next_node.port})
+        
         # Inform Next
         url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
         requests.put(url, params={"ip":node.previous_node.ip,"port":node.previous_node.port})
         node = None
+        
         return r.text
 
 @app.route('/kickout', methods=['DELETE'])
@@ -209,17 +213,21 @@ def send():
         node.data[d["key"]] = d["value"]
     return "Keys transfered!"
 
-@app.route('/trasferKeys')
+@app.route('/transferKeys')
 def transfer_keys():
     global node        
     keynode = int(request.args.get("keynode"))
 
-    data_list = [{"key":key,"value":node.data[key]} for key in node.data if key <= keynode or key > node.key]
-    data = {"keys":data_list}
-    
-    if data_list == []:
-        return "No keys to be transfered",204
+    if node.data == {}:
+        response = app.response_class(
+            response=json.dumps({"keys":[]}),
+            status=204,
+            mimetype='application/json'
+        )
+        return response
     else:
+        data_list = [{"key":key,"value":node.data[key]} for key in node.data if key <= keynode or key > node.key]
+        data = {"keys":data_list}
         response = app.response_class(
             response=json.dumps(data),
             status=200,
