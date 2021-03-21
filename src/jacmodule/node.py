@@ -30,7 +30,12 @@ class Node():
         return self.key == self.bnode.key
 
     def successor(self,key_value):
+
         key = hash_key(key_value)
+
+        if self.next_node == None or self.previous_node == None:
+            return ReferenceNode(self.ip, self.port)
+
         if self.previous_node.key < self.next_node.key:
             # Inner node
             if key <= self.previous_node.key:
