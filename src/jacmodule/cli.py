@@ -107,6 +107,21 @@ def overlay():
     r = requests.get(url)
     click.echo(r.text)
 
+@cli_group.command(context_settings=CONTEXT_SETTINGS)
+def info():
+    """
+        Displays info for current node.
+    """
+    click.echo("Node Info")
+    url = "http://{}:{}/info".format(ip,port)
+    r = requests.get(url)
+    data = r.json()
+    print(data["keys"],sep="\n")
+    click.echo("Previous Node")
+    click.echo(data["previous"])
+    click.echo("Next Node")
+    click.echo(data["next"])   
+
 #   Dummy command, just for
 #   showing up in cli help message
 @cli_group.command(context_settings=CONTEXT_SETTINGS, short_help="Prints this message and exits.")

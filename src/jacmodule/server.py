@@ -35,12 +35,15 @@ def join():
         node = BootstrapNode(ip, port)
         return "New chord created"
     else:
+        
         node = Node(ip, port, (bnode_ip, bnode_port))
+        
         # Communicate with bootstrap node
         url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
         r = requests.put(url, params={"ip":node.ip,"port":node.port})
+        
         if r.status_code == 200:
-            
+
             data = r.json()
             node.previous_node = ReferenceNode(data["previous"]["ip"],int(data["previous"]["port"]))
             node.next_node = ReferenceNode(data["next"]["ip"],int(data["next"]["port"]))
@@ -61,7 +64,6 @@ def join():
             # Inform next
             url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
             r = requests.put(url, params={"ip":node.ip,"port":node.port})
-            return "New node added successfully!"
 
             # Tell next to delete unnecessary keys
             url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
@@ -120,9 +122,10 @@ def depart():
         return "Bootstrap node is not allowed to depart!"
     else:
         # Send keys to next node
-        data_list = [{"key":key,"value":node.data[key]} for key in node.data]
-        data = {"keys":data_list}
-        r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
+        if not node.data == {}:
+            data_list = [{"key":k,"value":v} for (k,v) in node.data.items()]
+            data = {"keys":data_list}
+            r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
         
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
@@ -136,6 +139,7 @@ def depart():
         # Inform Next
         url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
         requests.put(url, params={"ip":node.previous_node.ip,"port":node.previous_node.port})
+        
         node = None
         
         return r.text
@@ -226,7 +230,7 @@ def transfer_keys():
         )
         return response
     else:
-        data_list = [{"key":key,"value":node.data[key]} for key in node.data if key <= keynode or key > node.key]
+        data_list = [{"key":k,"value":v} for (k,v) in node.data.items() if k <= keynode or k > node.key]
         data = {"keys":data_list}
         response = app.response_class(
             response=json.dumps(data),
@@ -237,10 +241,13 @@ def transfer_keys():
 
 @app.route('/deleteKeys',methods=['DELETE'])
 def delete_keys():
-    global node        
-    keynode = int(request.args.get("keynode"))
 
-    node.data = {key:node.data[key] for key in node.data if key <= keynode or key > node.key}
+    global node        
+    keynode = request.args.get("keynode")
+
+    if not keynode == None:
+        keynode = int(keynode)
+        node.data = {k:v for (k,v) in node.data.items() if not(k <= keynode or k > node.key)}
 
     return "Keys deleted"
 
@@ -280,6 +287,27 @@ def overlay():
         url = "http://{}:{}/overlay".format(node.bnode.ip,node.bnode.port)
         r = requests.get(url)
         return r.text
+
+@app.route('/info')
+def info():
+    global node
+    data = {
+        "keys": [{k:v} for (k,v) in node.data.items()],
+        "previous": {
+            "ip": node.previous_node.ip,
+            "port": node.previous_node.port,
+        },
+        "next": { 
+            "ip": node.next_node.ip,
+            "port": node.next_node.port,
+        },
+    }
+    response = app.response_class(
+        response=json.dumps(data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
