@@ -51,23 +51,24 @@ def join():
             # Inform neighboors
             # Receive keys from next
             url = "http://{}:{}/transferKeys".format(node.next_node.ip,node.next_node.port)
-            r = requests.get(url, params={"keynode":node.key})
+            r1 = requests.get(url, params={"keynode":node.key})
 
-            if r.status_code == 200:
+            if r1.status_code == 200:
                 data = r.json()["keys"]
                 node.data = {d["key_hash"]:(d["key"],d["value"]) for d in data}
             
             # Inform previous
             url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
-            r = requests.put(url, params={"ip":node.ip,"port":node.port})
+            r2 = requests.put(url, params={"ip":node.ip,"port":node.port})
             
             # Inform next
             url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
-            r = requests.put(url, params={"ip":node.ip,"port":node.port})
+            r3 = requests.put(url, params={"ip":node.ip,"port":node.port})
 
             # Tell next to delete unnecessary keys
-            url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
-            r = requests.delete(url, params={"keynode":node.key})
+            if r1.status_code == 200:
+                url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
+                r4 = requests.delete(url, params={"keynode":node.key})
 
             return "New node added successfully!"
 
