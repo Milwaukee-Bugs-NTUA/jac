@@ -71,7 +71,7 @@ def start_server():
 
     pid = os.fork()
     if pid == 0:
-        kfactor = 10
+        kfactor = 2
         consistency = "chain-replication"
         os.execle("./server.py","server.py",str(cli.port),str(kfactor),consistency,os.environ)
         # Unreachable statement. 

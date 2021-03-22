@@ -191,11 +191,37 @@ def query():
         successor = node.successor(key_value)
         
         if successor.key == node.key:
-            # Add key here
-            if key in node.data:
-                return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+
+            if node.kfactor == 1:
+            
+                # Add key here
+                if key in node.data:
+                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                else:
+                    return "Key not found",404
+            
             else:
-                return "Key not found",404
+
+                if node.consistency_type == "chain-replication":
+                
+                    if key in node.data:
+                        s = requests.Session()
+                        s.mount('http://', HTTPAdapter(max_retries=0))
+                        url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
+                        r = s.get(url,params={"key":key_value})
+                        
+                        return r.text, r.status_code
+                    
+                    else: 
+                        return "Key not found",404
+            
+                elif node.consistency_type == "eventually":
+                    # Add key here
+                    if key in node.data:
+                        return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                    else:
+                        return "Key not found",404
+
         else:
             # Send key to successor
             s = requests.Session()
@@ -203,6 +229,24 @@ def query():
             url = "http://{}:{}/query".format(successor.ip,successor.port)
             r = s.get(url,params={"key":key_value})
             return r.text
+
+@app.route('/queryReplicas')
+def query_replicas():
+    global node
+
+    key_value = request.args.get("key")
+    k, v, replica_number = node.replicas[hash_key(key_value)]
+    
+    if replica_number == node.kfactor - 1 or node.next_node.key == node.successor(key_value).key:
+        return "Key/Value pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
+    else:
+            
+        s = requests.Session()
+        s.mount('http://', HTTPAdapter(max_retries=0))
+        url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
+        r = s.post(url,params={"key":key_value})
+            
+        return r.text
 
 @app.route('/nextNode')
 def next_node():
