@@ -51,23 +51,24 @@ def join():
             # Inform neighboors
             # Receive keys from next
             url = "http://{}:{}/transferKeys".format(node.next_node.ip,node.next_node.port)
-            r = requests.get(url, params={"keynode":node.key})
+            r1 = requests.get(url, params={"keynode":node.key})
 
-            if r.status_code == 200:
+            if r1.status_code == 200:
                 data = r.json()["keys"]
-                node.data = {d["key"]:d["value"] for d in data}
+                node.data = {d["key_hash"]:(d["key"],d["value"]) for d in data}
             
             # Inform previous
             url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
-            r = requests.put(url, params={"ip":node.ip,"port":node.port})
+            r2 = requests.put(url, params={"ip":node.ip,"port":node.port})
             
             # Inform next
             url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
-            r = requests.put(url, params={"ip":node.ip,"port":node.port})
+            r3 = requests.put(url, params={"ip":node.ip,"port":node.port})
 
             # Tell next to delete unnecessary keys
-            url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
-            r = requests.delete(url, params={"keynode":node.key})
+            if r1.status_code == 200:
+                url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
+                r4 = requests.delete(url, params={"keynode":node.key})
 
             return "New node added successfully!"
 
@@ -123,7 +124,7 @@ def depart():
     else:
         # Send keys to next node
         if not node.data == {}:
-            data_list = [{"key":k,"value":v} for (k,v) in node.data.items()]
+            data_list = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()]
             data = {"keys":data_list}
             r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
         
@@ -173,22 +174,86 @@ def remove_node():
 def query():
     global node
     key_value = request.args.get("key")
-    key = hash_key(key_value)
     
-    successor = node.successor(key_value)
-    if successor.key == node.key:
-        # Add key here
-        if key in node.data:
-            return "Key/Value pair ({},{}) found in node {}:{}!".format(key_value,node.data[key],node.ip,node.port)
-        else:
-            return "Key not found",404
+    if key_value == "*":
+
+        response = app.response_class(
+            response=json.dumps([{"key": v[0],"value": v[1]} for v in node.data.values()]),
+            status=200,
+            mimetype='application/json'
+        )
+        
+        return response
+
     else:
-        # Send key to successor
-        s = requests.Session()
-        s.mount('http://', HTTPAdapter(max_retries=0))
-        url = "http://{}:{}/query".format(successor.ip,successor.port)
-        r = s.get(url,params={"key":key_value})
-        return r.text
+
+        key = hash_key(key_value)
+        successor = node.successor(key_value)
+        
+        if successor.key == node.key:
+            # Add key here
+            if key in node.data:
+                return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+            else:
+                return "Key not found",404
+        else:
+            # Send key to successor
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/query".format(successor.ip,successor.port)
+            r = s.get(url,params={"key":key_value})
+            return r.text
+
+@app.route('/nextNode')
+def next_node():
+    global node
+    if node == None:
+        response = app.response_class(
+            response=json.dumps({}),
+            status=204,
+            mimetype='application/json'
+        )
+    else:
+        response = app.response_class(
+            response=json.dumps({"ip":node.next_node.ip,"port":node.next_node.port}),
+            status=200,
+            mimetype='application/json'
+        )
+    return response
+
+@app.route('/queryAll')
+def query_all():
+    global node
+
+    data_list = [{"key":v[0], "value":v[1]} for v in node.data.values()]
+    
+    next_node = node.next_node
+
+    if not next_node == None:
+
+        while not next_node.key == node.key:
+            # Find next node for query
+            url = "http://{}:{}/nextNode".format(next_node.ip,next_node.port)
+            r1 = requests.get(url)
+            
+            # Receive keys for next node
+            url = "http://{}:{}/query".format(next_node.ip,next_node.port)
+            r2 = requests.get(url, params={"key":"*"})
+
+            # Update data_list
+            if r2.status_code == 200:
+                data_list = data_list + r2.json()
+
+            # Update next node
+            data = r1.json()
+            next_node = ReferenceNode(data["ip"],data["port"])        
+
+    response = app.response_class(
+        response=json.dumps({"keys":data_list}),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/insert',methods=['POST'])
 def insert():
@@ -199,8 +264,8 @@ def insert():
     successor = node.successor(key_value)
     if successor.key == node.key:
         # Add key here
-        node.data[hash_key(key_value)] = value
-        return "{}\nKey added successfully to node {}:{}!".format(hash_key(key_value),node.ip,node.port)
+        node.add_key(key_value,value)
+        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
     else:
         # Send key to successor
         s = requests.Session()
@@ -214,7 +279,7 @@ def send():
     global node        
     new_keys = json.loads(request.get_json())["keys"]
     for d in new_keys:
-        node.data[d["key"]] = d["value"]
+        node.data[d["key_hash"]] = (d["key"],d["value"])
     return "Keys transfered!"
 
 @app.route('/transferKeys')
@@ -230,7 +295,7 @@ def transfer_keys():
         )
         return response
     else:
-        data_list = [{"key":k,"value":v} for (k,v) in node.data.items() if k <= keynode or k > node.key]
+        data_list = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items() if k <= keynode or k > node.key]
         data = {"keys":data_list}
         response = app.response_class(
             response=json.dumps(data),
@@ -292,7 +357,7 @@ def overlay():
 def info():
     global node
     data = {
-        "keys": [{k:v} for (k,v) in node.data.items()],
+        "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
         "previous": {
             "ip": node.previous_node.ip,
             "port": node.previous_node.port,

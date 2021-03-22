@@ -50,9 +50,19 @@ def query(key):
         Finds the value of <key>.
     """
     global ip, port
-    url = "http://{}:{}/query".format(ip,port)
-    r = requests.get(url, params={"key":key})
-    click.echo(r.text)
+    if key == "*":
+
+        url = "http://{}:{}/queryAll".format(ip,port)
+        r = requests.get(url)
+
+        if r.status_code == 200:
+            keys = r.json()["keys"]
+            print(*keys,sep="\n")
+
+    else:
+        url = "http://{}:{}/query".format(ip,port)
+        r = requests.get(url, params={"key":key})
+        click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')
@@ -116,7 +126,7 @@ def info():
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
     data = r.json()
-    print(data["keys"],sep="\n")
+    print(*data["keys"],sep="\n")
     click.echo("Previous Node")
     click.echo(data["previous"])
     click.echo("Next Node")
