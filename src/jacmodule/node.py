@@ -29,6 +29,13 @@ class Node():
     def is_bootstrap(self):
         return self.key == self.bnode.key
 
+    def add_key(self, key, value):
+
+        key_hash = hash_key(key)
+        self.data[key_hash] = (key,value)
+
+        return key_hash
+
     def successor(self,key_value):
 
         key = hash_key(key_value)

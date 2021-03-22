@@ -116,7 +116,7 @@ def info():
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
     data = r.json()
-    print(data["keys"],sep="\n")
+    print(*data["keys"],sep="\n")
     click.echo("Previous Node")
     click.echo(data["previous"])
     click.echo("Next Node")
