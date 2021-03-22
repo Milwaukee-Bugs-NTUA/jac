@@ -27,16 +27,16 @@ def health_check():
 
 @app.route('/join', methods=['PUT'])
 def join():
-    global node, ip, port
+    global node, ip, port, kfactor,consistency
     bnode_ip = request.args.get("ip")
     bnode_port = int(request.args.get("port"))
 
     if ip == bnode_ip and port == bnode_port:
-        node = BootstrapNode(ip, port)
+        node = BootstrapNode(ip, port, kfactor, consistency)
         return "New chord created"
     else:
         
-        node = Node(ip, port, (bnode_ip, bnode_port))
+        node = Node(ip, port, (bnode_ip, bnode_port), kfactor, consistency)
         
         # Communicate with bootstrap node
         url = "http://{}:{}/addNode".format(bnode_ip,bnode_port)
@@ -54,7 +54,7 @@ def join():
             r1 = requests.get(url, params={"keynode":node.key})
 
             if r1.status_code == 200:
-                data = r.json()["keys"]
+                data = r1.json()["keys"]
                 node.data = {d["key_hash"]:(d["key"],d["value"]) for d in data}
             
             # Inform previous
@@ -262,17 +262,65 @@ def insert():
     value = request.args.get("value")
     
     successor = node.successor(key_value)
+
     if successor.key == node.key:
+        
         # Add key here
         node.add_key(key_value,value)
-        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+
+        if node.kfactor == 1:
+            return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+        else:
+
+            if node.consistency_type == "chain-replication":
+                
+                s = requests.Session()
+                s.mount('http://', HTTPAdapter(max_retries=0))
+                url = "http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port)
+                r = s.post(url,params={"key":key_value,"value":value,"replica_number":1})
+                
+                return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+            
+            elif node.consistency_type == "eventually":
+                
+                node.add_key(key_value,value)
+                
+                return "Eventually consistency is not Implemented Yet"
     else:
+        
         # Send key to successor
         s = requests.Session()
         s.mount('http://', HTTPAdapter(max_retries=0))
         url = "http://{}:{}/insert".format(successor.ip,successor.port)
         r = s.post(url,params={"key":key_value,"value":value})
+        
         return r.text
+
+@app.route('/insertReplicas',methods=['POST'])
+def insert_replicas():
+    global node
+
+    key_value = request.args.get("key")
+    value = request.args.get("value")
+    replica_number = int(request.args.get("replica_number"))
+    
+    # Update replica key
+    node.add_replica(key_value, value, replica_number)
+
+    if replica_number < node.kfactor - 1:
+    
+        # Edge case for kfactor >= number of nodes
+        if not node.next_node.key == node.successor(key_value).key:
+            
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port)
+            r = s.post(url,params={"key":key_value,"value":value,"replica_number":replica_number + 1})
+            
+            return r.text
+    
+    return "Replicas of key created"
+
 
 @app.route('/send',methods=['POST'])
 def send():
@@ -358,6 +406,7 @@ def info():
     global node
     data = {
         "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
+        "replicas": [{"key_hash":k,"key":v[0],"value":v[1],"replica_num":v[2]} for (k,v) in node.replicas.items()],
         "previous": {
             "ip": node.previous_node.ip,
             "port": node.previous_node.port,
@@ -397,12 +446,14 @@ def shutdown():
 
 if __name__ == "__main__":
 
-    if not len(sys.argv) == 2:
-        print("Please provide available port number & bootstrap option")
+    if not len(sys.argv) == 4:
+        print("Please provide available port number, replication factor & consistency type")
         exit()
 
     ip = socket.gethostbyname(socket.gethostname())
     port = int(sys.argv[1])
+    kfactor = int(sys.argv[2])
+    consistency = sys.argv[3]
     node = None
 
     try:
