@@ -174,22 +174,86 @@ def remove_node():
 def query():
     global node
     key_value = request.args.get("key")
-    key = hash_key(key_value)
     
-    successor = node.successor(key_value)
-    if successor.key == node.key:
-        # Add key here
-        if key in node.data:
-            return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
-        else:
-            return "Key not found",404
+    if key_value == "*":
+
+        response = app.response_class(
+            response=json.dumps([{"key": v[0],"value": v[1]} for v in node.data.values()]),
+            status=200,
+            mimetype='application/json'
+        )
+        
+        return response
+
     else:
-        # Send key to successor
-        s = requests.Session()
-        s.mount('http://', HTTPAdapter(max_retries=0))
-        url = "http://{}:{}/query".format(successor.ip,successor.port)
-        r = s.get(url,params={"key":key_value})
-        return r.text
+
+        key = hash_key(key_value)
+        successor = node.successor(key_value)
+        
+        if successor.key == node.key:
+            # Add key here
+            if key in node.data:
+                return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+            else:
+                return "Key not found",404
+        else:
+            # Send key to successor
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/query".format(successor.ip,successor.port)
+            r = s.get(url,params={"key":key_value})
+            return r.text
+
+@app.route('/nextNode')
+def next_node():
+    global node
+    if node == None:
+        response = app.response_class(
+            response=json.dumps({}),
+            status=204,
+            mimetype='application/json'
+        )
+    else:
+        response = app.response_class(
+            response=json.dumps({"ip":node.next_node.ip,"port":node.next_node.port}),
+            status=200,
+            mimetype='application/json'
+        )
+    return response
+
+@app.route('/queryAll')
+def query_all():
+    global node
+
+    data_list = [{"key":v[0], "value":v[1]} for v in node.data.values()]
+    
+    next_node = node.next_node
+
+    if not next_node == None:
+
+        while not next_node.key == node.key:
+            # Find next node for query
+            url = "http://{}:{}/nextNode".format(next_node.ip,next_node.port)
+            r1 = requests.get(url)
+            
+            # Receive keys for next node
+            url = "http://{}:{}/query".format(next_node.ip,next_node.port)
+            r2 = requests.get(url, params={"key":"*"})
+
+            # Update data_list
+            if r2.status_code == 200:
+                data_list = data_list + r2.json()
+
+            # Update next node
+            data = r1.json()
+            next_node = ReferenceNode(data["ip"],data["port"])        
+
+    response = app.response_class(
+        response=json.dumps({"keys":data_list}),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/insert',methods=['POST'])
 def insert():
