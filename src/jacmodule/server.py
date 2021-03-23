@@ -127,14 +127,26 @@ def depart():
             data_list = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()]
             data = {"keys":data_list}
             r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
-        
+
+            # In case of replication, my replicas sould shift
+            if node.kfactor > 1:
+                
+                if node.consistency_type == "chain-replication":
+                    
+                    s = requests.Session()
+                    s.mount('http://', HTTPAdapter(max_retries=0))
+                    r = s.post("http://{}:{}/shiftReplicas".format(node.next_node.ip,node.next_node.port))
+
         # Send replicas
         if not node.replicas == {}:
-            for (k,v) in node.replicas.items():
-                r = requests.post("http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port),params={"key":v[0],"value":v[1],"replica_number":v[2]})
-                if not r.status_code == 200:
-                    # Debugging
-                    print("problem with key {}".format(v[0]))
+
+            if node.consistency_type == "chain-replication":            
+                
+                s = requests.Session()
+                s.mount('http://', HTTPAdapter(max_retries=0))
+                        
+                for (k,v) in node.replicas.items():
+                    r = s.post("http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port),params={"key":v[0],"value":v[1],"replica_number":v[2]})
 
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
@@ -152,6 +164,27 @@ def depart():
         node = None
         
         return r.text
+
+@app.route('/shiftReplicas',methods=['POST'])
+def shift_replicas():
+    global node
+    
+    deletion_keys = set()
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=0))
+    
+    for (k,(key,value,replica_num)) in node.replicas.items():
+        if replica_num == 1:
+            
+            r = s.post("http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port),params={"key":key,"value":value,"replica_number":1})
+            
+            deletion_keys.add(k)
+
+    # Delete unnecessary keys
+    for k in deletion_keys:
+        del node.replicas[k]
+
+    return "Replicas of previous node shifted"
 
 @app.route('/kickout', methods=['DELETE'])
 def kickout():
