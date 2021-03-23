@@ -196,7 +196,7 @@ def query():
                 
                 if node.kfactor == 1:
                 
-                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                    return "Key pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
                 
                 elif node.consistency_type == "chain-replication":
                     
@@ -208,7 +208,7 @@ def query():
                 
                 elif node.consistency_type == "eventually":
                     
-                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                    return "Key pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
                         
             else:
                 return "Key not found",404
@@ -226,17 +226,25 @@ def query_replicas():
 
     key_value = request.args.get("key")
     k, v, replica_number = node.replicas[hash_key(key_value)]
+
+    if not node.key == node.successor(key_value).key:
     
-    if replica_number == node.kfactor - 1 or node.next_node.key == node.successor(key_value).key:
-        return "Key/Value pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
+        if replica_number == node.kfactor - 1:
+            return "Key pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
+        else:
+                
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
+            r = s.post(url,params={"key":key_value})
+
+            if r.status_code == 200:
+                return r.text
+            elif r.status_code == 204:
+                return "Key pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
     else:
-            
-        s = requests.Session()
-        s.mount('http://', HTTPAdapter(max_retries=0))
-        url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
-        r = s.post(url,params={"key":key_value})
-            
-        return r.text
+        return "Replica manager only have original data", 204
+
 
 @app.route('/nextNode')
 def next_node():
@@ -338,21 +346,21 @@ def insert_replicas():
     value = request.args.get("value")
     replica_number = int(request.args.get("replica_number"))
     
-    # Update replica key
-    node.add_replica(key_value, value, replica_number)
+    # Check if already have this key in data
+    # Only edge case if kfactor >= number on nodes
+    if not node.key == node.successor(key_value).key:
 
-    if replica_number < node.kfactor - 1:
-    
-        # Edge case for kfactor >= number of nodes
-        if not node.next_node.key == node.successor(key_value).key:
-            
+        # Update replica key
+        node.add_replica(key_value, value, replica_number)
+
+        if replica_number < node.kfactor - 1:
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port)
             r = s.post(url,params={"key":key_value,"value":value,"replica_number":replica_number + 1})
             
             return r.text
-    
+
     return "Key {} & its replicas added successfully".format(key_value)
 
 
@@ -443,14 +451,15 @@ def delete_replicas():
     key_value = request.args.get("key")
     replica_number = int(request.args.get("replica_number"))
     
-    # Delete replica key
-    del node.replicas[hash_key(key_value)]
 
-    if replica_number < node.kfactor - 1:
-    
-        # Edge case for kfactor >= number of nodes
-        if not node.next_node.key == node.successor(key_value).key:
-            
+    # Edge case for kfactor >= number of nodes
+    if not node.key == node.successor(key_value).key:
+        
+        # Delete replica key
+        del node.replicas[hash_key(key_value)]
+
+        if replica_number < node.kfactor - 1:
+                
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
