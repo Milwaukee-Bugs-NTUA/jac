@@ -192,36 +192,26 @@ def query():
         
         if successor.key == node.key:
 
-            if node.kfactor == 1:
-            
-                # Add key here
-                if key in node.data:
-                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
-                else:
-                    return "Key not found",404
-            
-            else:
-
-                if node.consistency_type == "chain-replication":
+            if key in node.data:
                 
-                    if key in node.data:
-                        s = requests.Session()
-                        s.mount('http://', HTTPAdapter(max_retries=0))
-                        url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
-                        r = s.get(url,params={"key":key_value})
-                        
-                        return r.text, r.status_code
+                if node.kfactor == 1:
+                
+                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                
+                elif node.consistency_type == "chain-replication":
                     
-                    else: 
-                        return "Key not found",404
-            
+                    s = requests.Session()
+                    s.mount('http://', HTTPAdapter(max_retries=0))
+                    url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
+                    r = s.get(url,params={"key":key_value})
+                    return r.text, r.status_code
+                
                 elif node.consistency_type == "eventually":
-                    # Add key here
-                    if key in node.data:
-                        return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
-                    else:
-                        return "Key not found",404
-
+                    
+                    return "Key/Value pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
+                        
+            else:
+                return "Key not found",404
         else:
             # Send key to successor
             s = requests.Session()
