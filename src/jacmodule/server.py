@@ -128,6 +128,14 @@ def depart():
             data = {"keys":data_list}
             r = requests.post("http://{}:{}/send".format(node.next_node.ip,node.next_node.port), json=json.dumps(data))
         
+        # Send replicas
+        if not node.replicas == {}:
+            for (k,v) in node.replicas.items():
+                r = requests.post("http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port),params={"key":v[0],"value":v[1],"replica_number":v[2]})
+                if not r.status_code == 200:
+                    # Debugging
+                    print("problem with key {}".format(v[0]))
+
         # Communicate with bootstrap node
         url = "http://{}:{}/removeNode".format(node.bnode.ip,node.bnode.port)
         r = requests.delete(url, params={"keynode":node.key})
