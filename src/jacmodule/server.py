@@ -353,7 +353,7 @@ def insert_replicas():
             
             return r.text
     
-    return "Replicas of key created"
+    return "Key {} & its replicas added successfully".format(key_value)
 
 
 @app.route('/send',methods=['POST'])
@@ -408,8 +408,24 @@ def delete():
     if successor.key == node.key:
         # Add key here
         if key in node.data:
-            del node.data[key]
-            return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+            if node.kfactor == 1:
+                del node.data[key]
+                return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+            
+            elif node.consistency_type == "chain-replication":
+                
+                del node.data[key]
+
+                s = requests.Session()
+                s.mount('http://', HTTPAdapter(max_retries=0))
+                url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
+                r = s.delete(url,params={"key":key_value,"replica_number":1})
+                
+                return r.text
+
+            elif node.consistency_type == "chain-replication":
+                del node.data[key]
+                return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
         else:
             return "Key not found",404
     else:
@@ -419,6 +435,30 @@ def delete():
         url = "http://{}:{}/delete".format(successor.ip,successor.port)
         r = s.delete(url,params={"key":key_value})
         return r.text
+
+@app.route('/deleteReplicas',methods=['DELETE'])
+def delete_replicas():
+    global node
+
+    key_value = request.args.get("key")
+    replica_number = int(request.args.get("replica_number"))
+    
+    # Delete replica key
+    del node.replicas[hash_key(key_value)]
+
+    if replica_number < node.kfactor - 1:
+    
+        # Edge case for kfactor >= number of nodes
+        if not node.next_node.key == node.successor(key_value).key:
+            
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
+            r = s.delete(url,params={"key":key_value,"replica_number":replica_number + 1})
+            
+            return r.text
+    
+    return "Key {} & its replicas deleted".format(key_value)
 
 @app.route('/overlay')
 def overlay():
