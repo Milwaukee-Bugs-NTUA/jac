@@ -12,7 +12,18 @@ port = None
 
 @click.group(add_help_option=False,options_metavar="",subcommand_metavar="COMMAND [OPTIONS] [ARGS]")
 def cli_group():
-    pass
+    ip = os.environ.get('JACSERVER_IP')
+    port = os.environ.get('JACSERVER_PORT')
+    if ip == None or port == None:
+        click.echo("Please provide IP and port for JAC server")
+        raise click.Abort
+    url = "http://{}:{}/".format(ip,port)
+    try:
+        r = requests.get(url)
+        pass
+    except requests.exceptions.ConnectionError:
+        click.echo("JAC server is not responding")
+        raise click.Abort
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-b','--bootstrap-node','bnode',required=False, nargs=2,type=str,metavar='<ip> <port>', help='Specify bootstrap node of chord')
