@@ -591,24 +591,27 @@ def delete():
     if successor.key == node.key:
         # Add key here
         if key in node.data:
+
+            del node.data[key]
+
             if node.kfactor == 1:
-                del node.data[key]
                 return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
-            
-            elif node.consistency_type == "chain-replication":
-                
-                del node.data[key]
+            else:
 
-                s = requests.Session()
-                s.mount('http://', HTTPAdapter(max_retries=0))
                 url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
-                r = s.delete(url,params={"key":key_value,"replica_number":1})
-                
-                return r.text
+                params = {"key":key_value,"replica_number":1}
 
-            elif node.consistency_type == "chain-replication":
-                del node.data[key]
-                return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+                if node.consistency_type == "chain-replication":
+                    
+                    s = requests.Session()
+                    s.mount('http://', HTTPAdapter(max_retries=0))
+                    r = s.delete(url,params=params)
+                    
+                    return r.text
+
+                elif node.consistency_type == "eventually":
+                    async_delete(url,params,{})
+                    return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
         else:
             return "Key not found",404
     else:
@@ -642,7 +645,7 @@ def delete_replicas():
             
             return r.text
     
-    return "Key {} & its replicas deleted".format(key_value)
+    return "Key '{}' & its replicas deleted".format(key_value)
 
 @app.route('/overlay')
 def overlay():
@@ -720,7 +723,7 @@ def async_post(url, params, data):
 def async_delete(url, params, data):
     s = requests.Session()
     s.mount('http://', HTTPAdapter(max_retries=0))
-    s.post(url,params=params,json = json.dumps(data))        
+    s.delete(url,params=params,json = json.dumps(data))        
 
 if __name__ == "__main__":
 
