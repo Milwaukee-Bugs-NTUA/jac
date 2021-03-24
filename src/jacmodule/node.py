@@ -17,14 +17,17 @@ class ReferenceNode():
 
 class Node():
     data = {}
+    replicas = {}
     next_node = None
     previous_node = None
 
-    def __init__(self, ip, port, bnode):
+    def __init__(self, ip, port, bnode, kfactor = 1, consistency_type = "eventually"):
         self.ip = ip
         self.port = port
         self.key = hash_key("{}:{}".format(ip, port))
         self.bnode = ReferenceNode(bnode[0],bnode[1])
+        self.kfactor = kfactor
+        self.consistency_type = consistency_type
 
     def is_bootstrap(self):
         return self.key == self.bnode.key
@@ -33,6 +36,13 @@ class Node():
 
         key_hash = hash_key(key)
         self.data[key_hash] = (key,value)
+
+        return key_hash
+
+    def add_replica(self, key, value, replica_number):
+
+        key_hash = hash_key(key)
+        self.replicas[key_hash] = (key,value, replica_number)
 
         return key_hash
 
@@ -73,8 +83,8 @@ class BootstrapNode(Node):
     nodes = {}
     number_of_nodes = 0
 
-    def __init__(self, ip, port):
-        super().__init__(ip, port, (ip,port))
+    def __init__(self, ip, port, kfactor = 1, consistency_type = "chain-replication"):
+        super().__init__(ip, port, (ip,port), kfactor, consistency_type)
         self.nodes[self.key] = (ip, port)
         self.number_of_nodes += 1
         
