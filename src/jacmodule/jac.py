@@ -4,6 +4,7 @@ import click
 import cmd
 from pyfiglet import Figlet
 import socket
+import sys
 import requests
 import shlex
 import os
@@ -57,7 +58,7 @@ def port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((cli.ip, port)) == 0
 
-def start_server():
+def start_server(kfactor, consistency_type):
     # Find available port
     for p in range(5000,5100):
         if port_in_use(p) == 0:
@@ -71,9 +72,7 @@ def start_server():
 
     pid = os.fork()
     if pid == 0:
-        kfactor = 2
-        consistency = "chain-replication"
-        os.execle("./server.py","server.py",str(cli.port),str(kfactor),consistency,os.environ)
+        os.execle("./server.py","server.py",str(cli.port),str(kfactor),consistency_type,os.environ)
         # Unreachable statement. 
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
@@ -89,12 +88,43 @@ def start_server():
     
     return True
 
+def check_jac_parameters():
+
+    if len(sys.argv) < 2:
+        click.echo("Please provide a k factor.")
+        exit()
+
+    try:
+        kfactor = int(sys.argv[1])
+    except ValueError:
+        click.echo("k factor must be a positive integer!")
+        exit()
+
+    if kfactor <= 0:
+        click.echo("k factor must be a positive integer!")
+        exit()
+    elif kfactor == 1:
+        return kfactor,""
+    elif len(sys.argv) < 3:
+        click.echo("Please, provide a consistency policy:")
+        click.echo("(*) chain-replication (*) eventually")
+        exit()
+    else:
+        consistency_type = sys.argv[2]
+        if not consistency_type in {"chain-replication","eventually"}:
+            click.echo("Not supported policy!")
+            exit()
+        return kfactor,consistency_type
+
 def main():
+
+    kfactor, consistency_type = check_jac_parameters()
+
     f = Figlet(font='slant')
     click.echo(f.renderText('J. A. C.'))
     click.echo("🎯 Just Another Chord implementation. 🎯\n")
 
-    if not start_server():
+    if not start_server(kfactor, consistency_type):
         exit() 
     jacshell = JacShell()
     try:

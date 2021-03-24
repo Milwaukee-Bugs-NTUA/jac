@@ -439,7 +439,7 @@ def fix_replicas():
         # Fix your replicas
         deletion_replicas = set()
         for (k,(key, value, replica_number)) in node.replicas.items():
-            if replica_number > hop or (replica_number == hop and k not in keys_of_initial_node):
+            if replica_number > hop or (replica_number == hop and not k in keys_of_initial_node):
                 if replica_number < node.kfactor - 1:
                     node.add_replica(key,value,replica_number + 1)
                 else:
