@@ -53,10 +53,20 @@ def join():
             url = "http://{}:{}/transferKeys".format(node.next_node.ip,node.next_node.port)
             r1 = requests.get(url, params={"keynode":node.key})
 
-            if r1.status_code == 200:
-                data = r1.json()["keys"]
-                node.data = {d["key_hash"]:(d["key"],d["value"]) for d in data}
-            
+            # Download Primary Keys
+            data = r1.json()
+            node.data = {d["key_hash"]:(d["key"],d["value"]) for d in data["keys"]}
+
+            if node.kfactor > 1:
+
+                if node.consistency_type == "chain-replication":
+                    node.replicas = {d["key_hash"]:(d["key"],d["value"],d["replica_number"]) for d in data["replicas"]}
+                    # Initiate fix replicas operation
+                    s = requests.Session()
+                    s.mount('http://', HTTPAdapter(max_retries=0))
+                    url = "http://{}:{}/initfixReplicas".format(node.next_node.ip,node.next_node.port)
+                    s.get(url)
+
             # Inform previous
             url = "http://{}:{}/changeNext".format(node.previous_node.ip,node.previous_node.port)
             r2 = requests.put(url, params={"ip":node.ip,"port":node.port})
@@ -66,10 +76,19 @@ def join():
             r3 = requests.put(url, params={"ip":node.ip,"port":node.port})
 
             # Tell next to delete unnecessary keys
-            if r1.status_code == 200:
-                url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
-                r4 = requests.delete(url, params={"keynode":node.key})
+            url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
+            r4 = requests.delete(url, params={"keynode":node.key})
 
+            # Edge case:
+            data = {"existing":list(node.replicas.keys()) + list(node.data.keys())}
+            url = "http://{}:{}/generateReplicas".format(node.previous_node.ip,node.previous_node.port)
+            r5 = requests.get(url,json=json.dumps(data))
+
+            data = r5.json()["keys"]
+
+            for d in data:
+                node.add_replica(d["key"],d["value"],d["replica_number"])
+            
             return "New node added successfully!"
 
         else:
@@ -290,7 +309,7 @@ def query_replicas():
 @app.route('/nextNode')
 def next_node():
     global node
-    if node == None:
+    if node == None or node.next_node == None:
         response = app.response_class(
             response=json.dumps({}),
             status=204,
@@ -404,6 +423,83 @@ def insert_replicas():
 
     return "Key {} & its replicas added successfully".format(key_value)
 
+@app.route('/fixReplicas',methods=['PUT'])
+def fix_replicas():
+    global node
+
+    initial_node = int(request.args.get("keynode"))
+    hop = int(request.args.get("hop"))
+
+    keys_of_initial_node = set(json.loads(request.get_json())["keys"])
+    print(keys_of_initial_node)
+    
+    # Only edge case if kfactor >= number on nodes
+    if not node.key == initial_node:
+
+        # Fix your replicas
+        deletion_replicas = set()
+        for (k,(key, value, replica_number)) in node.replicas.items():
+            if replica_number > hop or (replica_number == hop and k not in keys_of_initial_node):
+                if replica_number < node.kfactor - 1:
+                    node.add_replica(key,value,replica_number + 1)
+                else:
+                    deletion_replicas.add(k)
+        
+        for k in deletion_replicas:
+            del node.replicas[k]
+
+        if hop < node.kfactor - 1:
+            s = requests.Session()
+            s.mount('http://', HTTPAdapter(max_retries=0))
+            url = "http://{}:{}/fixReplicas".format(node.next_node.ip,node.next_node.port)
+            r = s.put(url,params={"keynode":initial_node,"hop": hop + 1})
+            
+            return r.text
+
+    return "Replication number updated"
+
+@app.route('/initfixReplicas')
+def init_fix_replicas():
+    global node
+
+    if not node.next_node == None:
+
+        # Send a list of your primary keys
+        # , that weren't send to new node
+        data = {"keys":list(node.data.keys())}
+
+        s = requests.Session()
+        s.mount('http://', HTTPAdapter(max_retries=0))
+        url = "http://{}:{}/fixReplicas".format(node.next_node.ip,node.next_node.port)
+        s.put(url,params={"keynode":node.key,"hop": 1},json=json.dumps(data))
+
+        return "Fix Replicas Operation ended"
+    else:
+        return "No need for Fix Replicas Sequence"
+
+@app.route('/generateReplicas')
+def generate_replicas():
+    global node
+
+    # Read set of existing keys
+    existing = set(json.loads(request.get_json())["existing"])
+    # Check primary keys
+    data = {}
+    for (k,(key,value)) in node.data.items():
+        if k not in existing:
+            data[k] = (key,value,1)
+    # Check replicas
+    for (k,(key,value,replica_number)) in node.replicas.items():
+        if replica_number < node.kfactor - 1 and k not in existing:
+            data[k] = (key,value,replica_number + 1)
+    
+    data = {"keys":[{"key":v[0],"value":v[1],"replica_number":v[2]} for (k,v) in data.items()]}
+    response = app.response_class(
+        response=json.dumps(data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/send',methods=['POST'])
 def send():
@@ -418,22 +514,48 @@ def transfer_keys():
     global node        
     keynode = int(request.args.get("keynode"))
 
-    if node.data == {}:
-        response = app.response_class(
-            response=json.dumps({"keys":[]}),
-            status=204,
-            mimetype='application/json'
-        )
-        return response
-    else:
+    if node.kfactor == 1 or node.consistency_type == "eventually":
+        
         data_list = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items() if k <= keynode or k > node.key]
         data = {"keys":data_list}
-        response = app.response_class(
-            response=json.dumps(data),
-            status=200,
-            mimetype='application/json'
-        )
-        return response
+        
+    elif node.consistency_type == "chain-replication":
+        
+        primary_keys = {k:v for (k,v) in node.data.items() if k <= keynode or k > node.key}
+        replicas_keys = [{"key_hash":k,"key":v[0],"value":v[1],"replica_number":v[2]} for (k,v) in node.replicas.items()]
+
+        # Increase replication number on 
+        # your own replication dictionairy
+        deletion_replicas = set()
+        
+        for (k,(key,value,replica_number)) in node.replicas.items():
+            if replica_number < node.kfactor - 1:
+                node.add_replica(key, value, replica_number + 1)
+            else:
+                deletion_replicas.add(k)
+
+        for k in deletion_replicas:
+            del node.replicas[k]
+
+        # Each primary key of node, that will be send
+        # to new node, must be added as a replica
+        for (k,(key,value)) in primary_keys.items():
+            node.add_replica(key,value,1)
+
+        # Uneccessary keys must be now deleted
+        for k in primary_keys.keys():
+            del node.data[k]
+        
+        # Format json output
+        primary_keys = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in primary_keys.items()]
+        data = {"keys":primary_keys,"replicas":replicas_keys}
+
+    response = app.response_class(
+        response=json.dumps(data),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/deleteKeys',methods=['DELETE'])
 def delete_keys():
