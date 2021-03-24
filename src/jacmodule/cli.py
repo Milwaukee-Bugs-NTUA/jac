@@ -7,8 +7,15 @@ import os
 import time
 
 CONTEXT_SETTINGS = dict(help_option_names=['--help','-h'])
-ip = socket.gethostbyname(socket.gethostname())
-port = None
+
+def jac_server_addr():
+    ip = os.environ.get("JACSERVER_IP")
+    port = os.environ.get("JACSERVER_PORT")
+
+    if ip == None or port == None:
+        raise click.Abort
+    else:
+        return ip, int(port)
 
 @click.group(add_help_option=False,options_metavar="",subcommand_metavar="COMMAND [OPTIONS] [ARGS]")
 def cli_group():
@@ -20,7 +27,8 @@ def join(bnode):
     """
         Inserts a new node.
     """
-    global ip, port
+    ip, port = jac_server_addr()
+    
     url = "http://{}:{}/".format(ip,port)
     if not bnode == ():
         with open(".jacserver.cfg","w") as f:
@@ -49,7 +57,8 @@ def query(key):
     """
         Finds the value of <key>.
     """
-    global ip, port
+    ip, port = jac_server_addr()
+
     if key == "*":
 
         url = "http://{}:{}/queryAll".format(ip,port)
@@ -71,7 +80,8 @@ def insert(key, value):
     """
         Inserts the pair (<key>, <value>).
     """
-    global ip, port
+    ip, port = jac_server_addr()
+
     url = "http://{}:{}/insert".format(ip,port)
     r = requests.post(url, params={"key":key,"value":value})
     click.echo(r.text)
@@ -82,7 +92,8 @@ def delete(key):
     """
         Deletes the specified <key>.
     """
-    global ip, port
+    ip, port = jac_server_addr()
+
     url = "http://{}:{}/delete".format(ip,port)
     r = requests.delete(url, params={"key":key})
     click.echo(r.text)
@@ -92,7 +103,8 @@ def depart():
     """
         Makes current node to depart.
     """
-    global ip, port
+    ip, port = jac_server_addr()
+
     url = "http://{}:{}/depart".format(ip,port)
     r = requests.delete(url)
     click.echo(r.text)
@@ -102,7 +114,8 @@ def exit():
     """
         Makes current node to depart & exits from shell.
     """
-    global ip, port
+    ip, port = jac_server_addr()
+
     url = "http://{}:{}/shutdown".format(ip,port)
     r = requests.post(url)
     click.echo(r.text)
@@ -112,6 +125,8 @@ def overlay():
     """
         Displays current network topology.
     """
+    ip, port = jac_server_addr()
+
     click.echo("Chord Architecture")
     url = "http://{}:{}/overlay".format(ip,port)
     r = requests.get(url)
@@ -122,6 +137,8 @@ def info():
     """
         Displays info for current node.
     """
+    ip, port = jac_server_addr()
+
     click.echo("Node Info")
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
