@@ -54,30 +54,36 @@ class JacShell(cmd.Cmd):
     # For using Ctrl-D as exit shortcut
     do_EOF = do_exit
 
-def port_in_use(port):
+def port_in_use(ip, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex((cli.ip, port)) == 0
+        return s.connect_ex((ip, port)) == 0
 
 def start_server(kfactor, consistency_type):
+    ip = socket.gethostbyname(socket.gethostname())
     # Find available port
+    port = None
     for p in range(5000,5100):
-        if port_in_use(p) == 0:
-            cli.port = p
+        if port_in_use(ip, p) == 0:
+            port = p
             break
 
-    if cli.port == None:
+    if port == None:
         click.echo("Couldn't find available port for jac server.")
-        click.echo("Please try again later")
+        click.echo("Please try again later. Exit program with ctrl + C")
         return False
+
+    # Set enviromentals for cli commands
+    os.environ['JACSERVER_IP'] = ip
+    os.environ['JACSERVER_PORT'] = str(port)
 
     pid = os.fork()
     if pid == 0:
-        os.execle("./server.py","server.py",str(cli.port),str(kfactor),consistency_type,os.environ)
+        os.execle("./server.py","server.py",str(port),str(kfactor),consistency_type,os.environ)
         # Unreachable statement. 
         # Executed only if exec fails
         click.echo("Couldn't start jac server")     
     else:
-        url = "http://{}:{}/".format(cli.ip,cli.port)
+        url = "http://{}:{}/".format(ip,port)
         while True:
             try:
                 r = requests.get(url)
@@ -91,8 +97,7 @@ def start_server(kfactor, consistency_type):
 def check_jac_parameters():
 
     if len(sys.argv) < 2:
-        click.echo("Please provide a k factor.")
-        exit()
+        return 1,""
 
     try:
         kfactor = int(sys.argv[1])
