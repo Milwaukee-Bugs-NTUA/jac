@@ -4,6 +4,7 @@ from flask import Flask
 from flask import request
 import requests
 from requests.adapters import HTTPAdapter
+import multiprocessing
 import logging
 import socket
 import sys
@@ -59,7 +60,8 @@ def join():
 
             if node.kfactor > 1:
 
-                if node.consistency_type == "chain-replication":
+                if node.consistency_type == "chain-replication" or node.consistency_type == "eventually":
+                    
                     node.replicas = {d["key_hash"]:(d["key"],d["value"],d["replica_number"]) for d in data["replicas"]}
                     # Initiate fix replicas operation
                     s = requests.Session()
@@ -80,14 +82,16 @@ def join():
             r4 = requests.delete(url, params={"keynode":node.key})
 
             # Edge case:
-            data = {"existing":list(node.replicas.keys()) + list(node.data.keys())}
-            url = "http://{}:{}/generateReplicas".format(node.previous_node.ip,node.previous_node.port)
-            r5 = requests.get(url,json=json.dumps(data))
+            if node.kfactor > 1:
+                
+                data = {"existing":list(node.replicas.keys()) + list(node.data.keys())}
+                url = "http://{}:{}/generateReplicas".format(node.previous_node.ip,node.previous_node.port)
+                r5 = requests.get(url,json=json.dumps(data))
 
-            data = r5.json()["keys"]
+                data = r5.json()["keys"]
 
-            for d in data:
-                node.add_replica(d["key"],d["value"],d["replica_number"])
+                for d in data:
+                    node.add_replica(d["key"],d["value"],d["replica_number"])
             
             return "New node added successfully!"
 
@@ -150,7 +154,7 @@ def depart():
             # In case of replication, my replicas sould shift
             if node.kfactor > 1:
                 
-                if node.consistency_type == "chain-replication":
+                if node.consistency_type == "chain-replication" or node.consistency_type == "eventually":
                     
                     s = requests.Session()
                     s.mount('http://', HTTPAdapter(max_retries=0))
@@ -159,7 +163,7 @@ def depart():
         # Send replicas
         if not node.replicas == {}:
 
-            if node.consistency_type == "chain-replication":            
+            if node.consistency_type == "chain-replication" or node.consistency_type == "eventually":            
                 
                 s = requests.Session()
                 s.mount('http://', HTTPAdapter(max_retries=0))
@@ -273,6 +277,12 @@ def query():
             else:
                 return "Key not found",404
         else:
+
+            if node.kfactor > 1 and node.consistency_type == "eventually":
+                # In this case check replicas
+                if key in node.replicas:
+                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
+
             # Send key to successor
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
@@ -370,24 +380,26 @@ def insert():
         # Add key here
         node.add_key(key_value,value)
 
-        if node.kfactor == 1:
-            return "Key added successfully to node {}:{}!".format(node.ip,node.port)
-        else:
+        if node.kfactor > 1:
+
+            url = "http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port)
+            params = {"key":key_value,"value":value,"replica_number":1}
 
             if node.consistency_type == "chain-replication":
                 
                 s = requests.Session()
                 s.mount('http://', HTTPAdapter(max_retries=0))
-                url = "http://{}:{}/insertReplicas".format(node.next_node.ip,node.next_node.port)
-                r = s.post(url,params={"key":key_value,"value":value,"replica_number":1})
-                
-                return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+                r = s.post(url,params=params)
             
             elif node.consistency_type == "eventually":
                 
-                node.add_key(key_value,value)
-                
-                return "Eventually consistency is not Implemented Yet"
+                # Asychrnous call of insertReplicas
+                p1 = multiprocessing.Process(target=async_post, args=(url,params,{}))
+                # starting process 1
+                p1.start()
+            
+        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+    
     else:
         
         # Send key to successor
@@ -514,12 +526,12 @@ def transfer_keys():
     global node        
     keynode = int(request.args.get("keynode"))
 
-    if node.kfactor == 1 or node.consistency_type == "eventually":
+    if node.kfactor == 1:
         
         data_list = [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items() if k <= keynode or k > node.key]
         data = {"keys":data_list}
         
-    elif node.consistency_type == "chain-replication":
+    elif node.consistency_type == "chain-replication" or node.consistency_type == "eventually":
         
         primary_keys = {k:v for (k,v) in node.data.items() if k <= keynode or k > node.key}
         replicas_keys = [{"key_hash":k,"key":v[0],"value":v[1],"replica_number":v[2]} for (k,v) in node.replicas.items()]
@@ -688,7 +700,27 @@ def shutdown():
             url = "http://{}:{}/depart".format(node.ip,node.port)
             r = requests.delete(url)
             shutdown_server()
-    return 'Server shutting down...'  
+    return 'Server shutting down...'
+
+def async_get(url, params, data):
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=0))
+    s.get(url,params=params,json = json.dumps(data))
+
+def async_put(url, params, data):
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=0))
+    s.put(url,params=params,json = json.dumps(data))
+
+def async_post(url, params, data):
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=0))
+    s.post(url,params=params,json = json.dumps(data))
+
+def async_delete(url, params, data):
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=0))
+    s.post(url,params=params,json = json.dumps(data))        
 
 if __name__ == "__main__":
 
