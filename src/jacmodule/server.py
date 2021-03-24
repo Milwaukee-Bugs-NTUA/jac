@@ -77,12 +77,13 @@ def join():
             url = "http://{}:{}/changePrevious".format(node.next_node.ip,node.next_node.port)
             r3 = requests.put(url, params={"ip":node.ip,"port":node.port})
 
-            # Tell next to delete unnecessary keys
-            url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
-            r4 = requests.delete(url, params={"keynode":node.key})
+            if node.kfactor == 1:
+                # Tell next to delete unnecessary keys
+                url = "http://{}:{}/deleteKeys".format(node.next_node.ip,node.next_node.port)
+                r4 = requests.delete(url, params={"keynode":node.key})
 
             # Edge case:
-            if node.kfactor > 1:
+            elif node.kfactor > 1:
                 
                 data = {"existing":list(node.replicas.keys()) + list(node.data.keys())}
                 url = "http://{}:{}/generateReplicas".format(node.previous_node.ip,node.previous_node.port)
