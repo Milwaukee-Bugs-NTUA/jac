@@ -32,6 +32,9 @@ def join():
     bnode_ip = request.args.get("ip")
     bnode_port = int(request.args.get("port"))
 
+    if not node is None:
+        return "You're already part of chord.",403
+
     if ip == bnode_ip and port == bnode_port:
         node = BootstrapNode(ip, port, kfactor, consistency)
         return "New chord created"
@@ -143,6 +146,10 @@ def add_node():
 @app.route('/depart', methods=['DELETE'])
 def depart():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+
     if node.is_bootstrap():
         return "Bootstrap node is not allowed to depart!"
     else:
@@ -239,6 +246,9 @@ def remove_node():
 def query():
     global node
     key_value = request.args.get("key")
+
+    if node is None:
+        return "You have to join first.", 403
     
     if key_value == "*":
 
@@ -338,6 +348,9 @@ def next_node():
 def query_all():
     global node
 
+    if node is None:
+        return "You have to join first.", 403
+
     data_list = [{"key":v[0], "value":v[1]} for v in node.data.values()]
     
     next_node = node.next_node
@@ -373,6 +386,9 @@ def insert():
     global node    
     key_value = request.args.get("key")
     value = request.args.get("value")
+
+    if node is None:
+        return "You have to join first.", 403
     
     successor = node.successor(key_value)
 
@@ -587,6 +603,9 @@ def delete():
     global node
     key_value = request.args.get("key")
     key = hash_key(key_value)
+
+    if node is None:
+        return "You have to join first.", 403
     
     successor = node.successor(key_value)
     if successor.key == node.key:
@@ -651,6 +670,10 @@ def delete_replicas():
 @app.route('/overlay')
 def overlay():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+    
     if node.is_bootstrap():
         response_text = "{} Nodes\n".format(node.number_of_nodes)
         l = list(node.nodes.keys())
@@ -666,6 +689,10 @@ def overlay():
 @app.route('/info')
 def info():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+
     data = {
         "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
         "replicas": [{"key_hash":k,"key":v[0],"value":v[1],"replica_num":v[2]} for (k,v) in node.replicas.items()],

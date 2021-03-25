@@ -142,15 +142,18 @@ def info():
     click.echo("Node Info")
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
-    data = r.json()
-    click.echo("== Primary Keys ==")
-    print(*data["keys"],sep="\n")
-    click.echo("== Replicas Keys ==")
-    print(*data["replicas"],sep="\n")
-    click.echo("Previous Node")
-    click.echo(data["previous"])
-    click.echo("Next Node")
-    click.echo(data["next"])   
+    if r.status_code == 200:
+        data = r.json()
+        click.echo("== Primary Keys ==")
+        print(*data["keys"],sep="\n")
+        click.echo("== Replicas Keys ==")
+        print(*data["replicas"],sep="\n")
+        click.echo("Previous Node")
+        click.echo(data["previous"])
+        click.echo("Next Node")
+        click.echo(data["next"])
+    else:
+        click.echo(r.text)
 
 #   Dummy command, just for
 #   showing up in cli help message
