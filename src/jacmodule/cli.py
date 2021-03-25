@@ -3,6 +3,7 @@
 import click
 import requests
 import socket
+from pathlib import Path
 import os
 import time
 
@@ -28,15 +29,16 @@ def join(bnode):
         Inserts a new node.
     """
     ip, port = jac_server_addr()
+    home_dir = str(Path.home()) + '/'
     
     url = "http://{}:{}/".format(ip,port)
     if not bnode == ():
-        with open(".jacserver.cfg","w") as f:
+        with open(home_dir + ".jacserver.cfg","w") as f:
                 f.write("{} {}".format(bnode[0],bnode[1]))
         params = {'ip' : bnode[0], 'port' : bnode[1]}
     else:
-        if os.path.exists(".jacserver.cfg"):
-            with open(".jacserver.cfg","r") as f:
+        if os.path.exists(home_dir + ".jacserver.cfg"):
+            with open(home_dir + ".jacserver.cfg","r") as f:
                 line = f.readline().split()
                 if line == []:
                     click.echo("Please provide a bootstrap node")
