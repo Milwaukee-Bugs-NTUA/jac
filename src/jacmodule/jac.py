@@ -11,6 +11,28 @@ import os
 
 import cli
 
+def shlex_friendly(string):
+    
+    found = False
+    l = list(string)
+
+    n = string.count("'")
+    if n == 1:
+        return string.replace("'", "")
+    else:
+
+        for index, s in enumerate(l):
+            if s == "'":
+                if found == False:
+                    found = True
+                    first = index
+                else:
+                    last = index
+
+    l[first] = '"'
+    l[last] = '"'
+    return "".join(l).replace("'", "")
+
 class JacShell(cmd.Cmd):
 
     prompt = click.style("jac-cli@ntua",fg='cyan') + "$ "
@@ -26,7 +48,10 @@ class JacShell(cmd.Cmd):
         return True
 
     def default(self, line):
-        args = shlex.split(line)
+        try:
+            args = shlex.split(line)
+        except ValueError:
+            args = shlex.split(shlex_friendly(line))
         subcommand = cli.cli_group.commands.get(args[0])
         if subcommand:
             try:
