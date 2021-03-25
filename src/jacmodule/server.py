@@ -251,9 +251,11 @@ def query():
         return "You have to join first.", 403
     
     if key_value == "*":
+        
+        data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
 
         response = app.response_class(
-            response=json.dumps([{"key": v[0],"value": v[1]} for v in node.data.values()]),
+            response=json.dumps(data_list),
             status=200,
             mimetype='application/json'
         )
@@ -351,7 +353,7 @@ def query_all():
     if node is None:
         return "You have to join first.", 403
 
-    data_list = [{"key":v[0], "value":v[1]} for v in node.data.values()]
+    data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
     
     next_node = node.next_node
 
@@ -375,7 +377,7 @@ def query_all():
             next_node = ReferenceNode(data["ip"],data["port"])        
 
     response = app.response_class(
-        response=json.dumps({"keys":data_list}),
+        response=json.dumps(data_list),
         status=200,
         mimetype='application/json'
     )

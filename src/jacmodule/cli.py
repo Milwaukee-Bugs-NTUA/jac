@@ -65,8 +65,14 @@ def query(key):
         r = requests.get(url)
 
         if r.status_code == 200:
-            keys = r.json()["keys"]
-            print(*keys,sep="\n")
+            node_data = r.json()
+            for n in node_data:
+                click.echo("Node {}".format(n["node"]))
+                click.echo("== Primary Keys ==")
+                print(*n["keys"],sep="\n")
+                click.echo("== Replica Keys ==")
+                print(*n["replicas"],sep="\n")
+                print()
 
     else:
         url = "http://{}:{}/query".format(ip,port)
