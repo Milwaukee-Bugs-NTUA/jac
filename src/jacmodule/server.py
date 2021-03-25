@@ -470,8 +470,8 @@ def fix_replicas():
     initial_node = int(request.args.get("keynode"))
     hop = int(request.args.get("hop"))
 
-    keys_of_initial_node = set(json.loads(request.get_json())["keys"])
-    print(keys_of_initial_node)
+    json_data = request.get_json()
+    keys_of_initial_node = set(json.loads(json_data)["keys"])
     
     # Only edge case if kfactor >= number on nodes
     if not node.key == initial_node:
@@ -492,7 +492,7 @@ def fix_replicas():
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/fixReplicas".format(node.next_node.ip,node.next_node.port)
-            r = s.put(url,params={"keynode":initial_node,"hop": hop + 1})
+            r = s.put(url,params={"keynode":initial_node,"hop": hop + 1},json=json_data)
             
             return r.text
 
@@ -507,6 +507,7 @@ def init_fix_replicas():
         # Send a list of your primary keys
         # , that weren't send to new node
         data = {"keys":list(node.data.keys())}
+        print(data)
 
         s = requests.Session()
         s.mount('http://', HTTPAdapter(max_retries=0))
