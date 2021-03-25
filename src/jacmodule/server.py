@@ -291,14 +291,23 @@ def query():
                 return "Key not found",404
         else:
 
-            if node.kfactor > 1 and node.consistency_type == "eventually":
-                # In this case check replicas
-                if key in node.replicas:
-                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
-
-            # Send key to successor
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
+
+            if node.kfactor > 1 and key in node.replicas:
+                
+                if node.consistency_type == "eventually":
+                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
+
+                elif node.consistency_type == "chain-replication":
+                    if node.replicas[key][2] == node.kfactor - 1 or node.next_node.key == successor.key: 
+                        return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port) 
+                    else:
+                        url = "http://{}:{}/query".format(node.next_node.ip,node.next_node.port)
+                        r = s.get(url,params={"key":key_value})
+                        return r.text
+                    
+            # Send key to successor
             url = "http://{}:{}/query".format(successor.ip,successor.port)
             r = s.get(url,params={"key":key_value})
             return r.text
