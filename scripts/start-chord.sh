@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Starts a chord from 5 VMs
-# $1: number of nodes
-# $2: k factor
-# $3: consistency policy
+# $1: k factor
+# $2: consistency policy
 start() {
 
     # Find IPs of vm
@@ -27,7 +26,7 @@ start() {
     for n in {1..2}
         do
             set_port="export JACSERVER_PORT=500$((n - 1))"
-            ssh user@main-node "sh -c 'nohup $jac_main 500$((n - 1)) $2 $3 > /dev/null 2>&1 &'"
+            ssh user@main-node "sh -c 'nohup $jac_main 500$((n - 1)) $1 $2 > /dev/null 2>&1 &'"
             ssh user@main-node "$find_ip_main && $set_ip_main && $set_port && $join_main"
         done
 
@@ -37,7 +36,7 @@ start() {
         for n in {1..2}
         do
             set_port="export JACSERVER_PORT=500$((n - 1))"
-            ssh user@node$i "sh -c 'nohup $jac 500$((n - 1)) $2 $3 > /dev/null 2>&1 &'"
+            ssh user@node$i "sh -c 'nohup $jac 500$((n - 1)) $1 $2 > /dev/null 2>&1 &'"
             ssh user@node$i "$find_ip && $set_ip && $set_port && $join"
         done
     done
@@ -46,17 +45,11 @@ start() {
 
 if [ $# -eq 0 -o $# -eq 1 ]
 then
-    echo "Please provide <number of nodes> <k factor> <consistency type>"
+    echo "Please provide <k factor> <consistency type>"
     exit
 fi
 
-if [ ! $(($1 % 5)) -eq 0 ]
-then
-    echo "This script works only for multiples of 5"
-    exit
-else
-    echo "Starting $1 nodes..."
-    start $1 $2 $3
-    echo "New chord created"
-fi
+echo "Starting 10 nodes..."
+start $1 $2
+echo "New chord created"
 

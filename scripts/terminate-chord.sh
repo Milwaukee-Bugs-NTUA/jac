@@ -1,9 +1,6 @@
 #!/bin/bash
 
-# Starts a chord from 5 VMs
-# $1: number of nodes
-# $2: k factor
-# $3: consistency policy
+# Terminate 10 nodes
 terminate() {
 
     conda_path=$(which conda)
@@ -20,8 +17,7 @@ terminate() {
     # Start nodes in main VM
     for n in 1 2
         do
-            p=$(($n - 1))
-            set_port="export JACSERVER_PORT=500$p"
+            set_port="export JACSERVER_PORT=500$((n - 1))"
             ssh user@main-node "$find_ip_main && $set_ip_main && $set_port && $exit_main"
         done
 
@@ -30,26 +26,13 @@ terminate() {
     do
         for n in 1 2
         do
-            p=$(($n - 1))
-            set_port="export JACSERVER_PORT=500$p"
+            set_port="export JACSERVER_PORT=500$((n - 1))"
             ssh user@node$i "$find_ip && $set_ip && $set_port && $exit"
         done
     done
         
 }
 
-if [ $# -eq 0 ]
-then
-    echo "Please provide <number of nodes>"
-    exit
-fi
-
-if [ ! $(($1 % 5)) -eq 0 ]
-then
-    echo "This script works only for multiples of 5"
-    exit
-else
-    echo "Terminating $1 nodes..."
-    terminate $1
-    echo "All nodes were terminated"
-fi
+echo "Terminating 10 nodes..."
+terminate
+echo "All nodes were terminated"
