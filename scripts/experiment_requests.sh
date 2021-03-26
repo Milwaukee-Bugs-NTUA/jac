@@ -2,7 +2,7 @@
 
 # Files 
 nodes="./nodes.txt"
-keys="../transactions/requests.txt"
+keys="../test_data/requests.txt"
 
 # Operations
 conda_path=$(which conda)
@@ -42,16 +42,16 @@ do
 	then
         if [ "$command" = "insert" ]
         then
-            ssh user@$node "$find_ip_main && $set_ip_main && $set_port && $cli_main $command \"$key\" $value" >> ../transactions/results_$1.txt
+            ssh user@$node "$find_ip_main && $set_ip_main && $set_port && $cli_main $command \"$key\" $value" >> ../test_data/results_$1.txt
         else
-            ssh user@$node "$find_ip_main && $set_ip_main && $set_port && $cli_main $command \"$key\"" >> ../transactions/results_$1.txt
+            ssh user@$node "$find_ip_main && $set_ip_main && $set_port && $cli_main $command \"$key\"" >> ../test_data/results_$1.txt
         fi
 	else
         if [ "$command" = "insert" ]
         then
-      		ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\" $value" >> ../transactions/results_$1.txt
+      		ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\" $value" >> ../test_data/results_$1.txt
         else
-        	ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\"" >> ../transactions/results_$1.txt
+        	ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\"" >> ../test_data/results_$1.txt
         fi
 	fi
 

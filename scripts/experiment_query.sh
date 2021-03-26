@@ -2,7 +2,7 @@
 
 # Files 
 nodes="./nodes.txt"
-keys="../transactions/query.txt"
+keys="../test_data/query.txt"
 
 # Operations
 conda_path=$(which conda)
@@ -38,4 +38,4 @@ done 4<$nodes 5<$keys
 end=`date +%s`
 
 runtime=$((end-start))
-echo $runtime >> ../transactions/query_times.txt
+echo $runtime >> ../test_data/query_times.txt

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo > ../transactions/insert_times.txt
-echo > ../transactions/query_times.txt
+echo > ../test_data/insert_times.txt
+echo > ../test_data/query_times.txt
 
 echo "--- Experiment for k = 1 ----"
 ./start-chord.sh 1 chain-replication
