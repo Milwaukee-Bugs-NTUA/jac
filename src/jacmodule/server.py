@@ -328,7 +328,7 @@ def query_replicas():
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
-            r = s.post(url,params={"key":key_value})
+            r = s.get(url,params={"key":key_value})
 
             if r.status_code == 200:
                 return r.text

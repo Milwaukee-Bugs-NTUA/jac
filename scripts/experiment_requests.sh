@@ -49,11 +49,9 @@ do
 	else
         if [ "$command" = "insert" ]
         then
-            echo $key $value
-      		#ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\" $value" >> ../transactions/results_$1.txt
+      		ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\" $value" >> ../transactions/results_$1.txt
         else
-            echo $key
-        	#ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\"" >> ../transactions/results_$1.txt
+        	ssh user@$node "$find_ip && $set_ip && $set_port && $cli $command \"$key\"" >> ../transactions/results_$1.txt
         fi
 	fi
 
