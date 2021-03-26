@@ -13,7 +13,7 @@ from node import *
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
-#log.disabled = True
+log.disabled = True
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -507,7 +507,6 @@ def init_fix_replicas():
         # Send a list of your primary keys
         # , that weren't send to new node
         data = {"keys":list(node.data.keys())}
-        print(data)
 
         s = requests.Session()
         s.mount('http://', HTTPAdapter(max_retries=0))
