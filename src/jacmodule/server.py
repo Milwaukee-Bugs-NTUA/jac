@@ -13,7 +13,7 @@ from node import *
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
-#log.disabled = True
+log.disabled = True
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -31,6 +31,9 @@ def join():
     global node, ip, port, kfactor,consistency
     bnode_ip = request.args.get("ip")
     bnode_port = int(request.args.get("port"))
+
+    if not node is None:
+        return "You're already part of chord.",403
 
     if ip == bnode_ip and port == bnode_port:
         node = BootstrapNode(ip, port, kfactor, consistency)
@@ -143,6 +146,10 @@ def add_node():
 @app.route('/depart', methods=['DELETE'])
 def depart():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+
     if node.is_bootstrap():
         return "Bootstrap node is not allowed to depart!"
     else:
@@ -239,11 +246,16 @@ def remove_node():
 def query():
     global node
     key_value = request.args.get("key")
+
+    if node is None:
+        return "You have to join first.", 403
     
     if key_value == "*":
+        
+        data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
 
         response = app.response_class(
-            response=json.dumps([{"key": v[0],"value": v[1]} for v in node.data.values()]),
+            response=json.dumps(data_list),
             status=200,
             mimetype='application/json'
         )
@@ -279,14 +291,23 @@ def query():
                 return "Key not found",404
         else:
 
-            if node.kfactor > 1 and node.consistency_type == "eventually":
-                # In this case check replicas
-                if key in node.replicas:
-                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
-
-            # Send key to successor
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
+
+            if node.kfactor > 1 and key in node.replicas:
+                
+                if node.consistency_type == "eventually":
+                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
+
+                elif node.consistency_type == "chain-replication":
+                    if node.replicas[key][2] == node.kfactor - 1 or node.next_node.key == successor.key: 
+                        return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port) 
+                    else:
+                        url = "http://{}:{}/query".format(node.next_node.ip,node.next_node.port)
+                        r = s.get(url,params={"key":key_value})
+                        return r.text
+                    
+            # Send key to successor
             url = "http://{}:{}/query".format(successor.ip,successor.port)
             r = s.get(url,params={"key":key_value})
             return r.text
@@ -307,7 +328,7 @@ def query_replicas():
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
-            r = s.post(url,params={"key":key_value})
+            r = s.get(url,params={"key":key_value})
 
             if r.status_code == 200:
                 return r.text
@@ -338,7 +359,10 @@ def next_node():
 def query_all():
     global node
 
-    data_list = [{"key":v[0], "value":v[1]} for v in node.data.values()]
+    if node is None:
+        return "You have to join first.", 403
+
+    data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
     
     next_node = node.next_node
 
@@ -362,7 +386,7 @@ def query_all():
             next_node = ReferenceNode(data["ip"],data["port"])        
 
     response = app.response_class(
-        response=json.dumps({"keys":data_list}),
+        response=json.dumps(data_list),
         status=200,
         mimetype='application/json'
     )
@@ -373,6 +397,9 @@ def insert():
     global node    
     key_value = request.args.get("key")
     value = request.args.get("value")
+
+    if node is None:
+        return "You have to join first.", 403
     
     successor = node.successor(key_value)
 
@@ -443,8 +470,8 @@ def fix_replicas():
     initial_node = int(request.args.get("keynode"))
     hop = int(request.args.get("hop"))
 
-    keys_of_initial_node = set(json.loads(request.get_json())["keys"])
-    print(keys_of_initial_node)
+    json_data = request.get_json()
+    keys_of_initial_node = set(json.loads(json_data)["keys"])
     
     # Only edge case if kfactor >= number on nodes
     if not node.key == initial_node:
@@ -465,7 +492,7 @@ def fix_replicas():
             s = requests.Session()
             s.mount('http://', HTTPAdapter(max_retries=0))
             url = "http://{}:{}/fixReplicas".format(node.next_node.ip,node.next_node.port)
-            r = s.put(url,params={"keynode":initial_node,"hop": hop + 1})
+            r = s.put(url,params={"keynode":initial_node,"hop": hop + 1},json=json_data)
             
             return r.text
 
@@ -587,6 +614,9 @@ def delete():
     global node
     key_value = request.args.get("key")
     key = hash_key(key_value)
+
+    if node is None:
+        return "You have to join first.", 403
     
     successor = node.successor(key_value)
     if successor.key == node.key:
@@ -651,6 +681,10 @@ def delete_replicas():
 @app.route('/overlay')
 def overlay():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+    
     if node.is_bootstrap():
         response_text = "{} Nodes\n".format(node.number_of_nodes)
         l = list(node.nodes.keys())
@@ -666,6 +700,10 @@ def overlay():
 @app.route('/info')
 def info():
     global node
+
+    if node is None:
+        return "You have to join first.", 403
+
     data = {
         "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
         "replicas": [{"key_hash":k,"key":v[0],"value":v[1],"replica_num":v[2]} for (k,v) in node.replicas.items()],

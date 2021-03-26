@@ -3,6 +3,7 @@
 import click
 import requests
 import socket
+from pathlib import Path
 import os
 import time
 
@@ -28,15 +29,16 @@ def join(bnode):
         Inserts a new node.
     """
     ip, port = jac_server_addr()
+    home_dir = str(Path.home()) + '/'
     
     url = "http://{}:{}/".format(ip,port)
     if not bnode == ():
-        with open(".jacserver.cfg","w") as f:
+        with open(home_dir + ".jacserver.cfg","w") as f:
                 f.write("{} {}".format(bnode[0],bnode[1]))
         params = {'ip' : bnode[0], 'port' : bnode[1]}
     else:
-        if os.path.exists(".jacserver.cfg"):
-            with open(".jacserver.cfg","r") as f:
+        if os.path.exists(home_dir + ".jacserver.cfg"):
+            with open(home_dir + ".jacserver.cfg","r") as f:
                 line = f.readline().split()
                 if line == []:
                     click.echo("Please provide a bootstrap node")
@@ -65,8 +67,14 @@ def query(key):
         r = requests.get(url)
 
         if r.status_code == 200:
-            keys = r.json()["keys"]
-            print(*keys,sep="\n")
+            node_data = r.json()
+            for n in node_data:
+                click.echo("Node {}".format(n["node"]))
+                click.echo("== Primary Keys ==")
+                print(*n["keys"],sep="\n")
+                click.echo("== Replica Keys ==")
+                print(*n["replicas"],sep="\n")
+                print()
 
     else:
         url = "http://{}:{}/query".format(ip,port)
@@ -142,15 +150,18 @@ def info():
     click.echo("Node Info")
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
-    data = r.json()
-    click.echo("== Primary Keys ==")
-    print(*data["keys"],sep="\n")
-    click.echo("== Replicas Keys ==")
-    print(*data["replicas"],sep="\n")
-    click.echo("Previous Node")
-    click.echo(data["previous"])
-    click.echo("Next Node")
-    click.echo(data["next"])   
+    if r.status_code == 200:
+        data = r.json()
+        click.echo("== Primary Keys ==")
+        print(*data["keys"],sep="\n")
+        click.echo("== Replicas Keys ==")
+        print(*data["replicas"],sep="\n")
+        click.echo("Previous Node")
+        click.echo(data["previous"])
+        click.echo("Next Node")
+        click.echo(data["next"])
+    else:
+        click.echo(r.text)
 
 #   Dummy command, just for
 #   showing up in cli help message
