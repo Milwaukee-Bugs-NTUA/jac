@@ -7,7 +7,6 @@ AUTHORS = 'Giannis Fakinos, Panagiotis Kranias'
 
 # Setting up
 setup(
-        # the name must match the folder name 'verysimplemodule'
         name="jacmodule", 
         version=VERSION,
         author=AUTHORS,

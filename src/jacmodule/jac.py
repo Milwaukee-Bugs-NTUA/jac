@@ -11,28 +11,6 @@ import os
 
 import cli
 
-def shlex_friendly(string):
-    
-    found = False
-    l = list(string)
-
-    n = string.count("'")
-    if n == 1:
-        return string.replace("'", "")
-    else:
-
-        for index, s in enumerate(l):
-            if s == "'":
-                if found == False:
-                    found = True
-                    first = index
-                else:
-                    last = index
-
-    l[first] = '"'
-    l[last] = '"'
-    return "".join(l).replace("'", "")
-
 class JacShell(cmd.Cmd):
 
     prompt = click.style("jac-cli@ntua",fg='cyan') + "$ "
@@ -48,11 +26,17 @@ class JacShell(cmd.Cmd):
         return True
 
     def default(self, line):
+        
         try:
             args = shlex.split(line)
         except ValueError:
-            args = shlex.split(shlex_friendly(line))
+            click.echo("Please ensure that keys are formated properly...")
+            click.echo("* If your key contains quotation marks, enclose it with single quotation marks.")
+            click.echo("* If your key contains apostrophes, enclose it with double quotation marks.")
+            return cmd.Cmd.default(self, line)
+
         subcommand = cli.cli_group.commands.get(args[0])
+
         if subcommand:
             try:
                 subcommand.main(args[1:],prog_name=args[0],standalone_mode = False)
