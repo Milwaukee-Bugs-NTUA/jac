@@ -115,7 +115,15 @@ def insert(key, value):
 
     url = "http://{}:{}/insert".format(ip,port)
     r = requests.post(url, params={"key":key,"value":value})
-    click.echo(r.text)
+    if r.status_code == 200:
+        t1 = PrettyTable()
+        t1.field_names = ["Hash", "Key", "Value","Node IP", "Node Port"]
+        t1.add_row(list(r.json().values()))
+        print(t1)
+        click.echo()
+        click.echo("Key inserted successfully.")
+    else:
+        click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')

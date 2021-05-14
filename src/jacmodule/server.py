@@ -487,7 +487,20 @@ def insert():
     if successor.key == node.key:
         
         # Add key here
-        node.add_key(key_value,value)
+        key = node.add_key(key_value,value)
+
+        data = {
+            "hash": key,
+            "key": key_value,
+            "value": value,
+            "node_ip": node.ip,
+            "node_port": node.port,
+        }
+        insert_response = app.response_class(
+                response=json.dumps(data),
+                status=200,
+                mimetype='application/json'
+            )
 
         if node.kfactor > 1:
 
@@ -507,7 +520,7 @@ def insert():
                 # starting process 1
                 p1.start()
             
-        return "Key added successfully to node {}:{}!".format(node.ip,node.port), 200
+        return insert_response
     
     else:
         
@@ -517,7 +530,14 @@ def insert():
         url = "http://{}:{}/insert".format(successor.ip,successor.port)
         r = s.post(url,params={"key":key_value,"value":value})
         
-        return r.text
+        if r.status_code == 200:
+            return  app.response_class(
+                response=json.dumps(r.json()),
+                status=r.status_code,
+                mimetype='application/json'
+            )
+        else:
+            return r.text, r.status_code
 
 @app.route('/insertReplicas',methods=['POST'])
 def insert_replicas():
