@@ -80,7 +80,14 @@ def query(key):
     else:
         url = "http://{}:{}/query".format(ip,port)
         r = requests.get(url, params={"key":key})
-        click.echo(r.text)
+        if r.status_code == 200:
+            t1 = PrettyTable()
+            t1.field_names = ["Hash", "Key", "Value","Replica Number","Node IP", "Node Port"]
+            t1.add_row(list(r.json().values()))
+            print(t1)
+        else:
+            click.echo(r.text)
+
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('key', metavar='<key>')
@@ -169,7 +176,7 @@ def info():
         click.echo()
         click.echo("Replicas Keys:")
         t2 = PrettyTable()
-        t2.field_names = ["Hash", "Key", "Value"]
+        t2.field_names = ["Hash", "Key", "Value", "Replica Number"]
         for k in data["replicas"]:
             t2.add_row(list(k.values()))
         print(t2)
