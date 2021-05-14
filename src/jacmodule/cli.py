@@ -155,7 +155,10 @@ def overlay():
         t1.field_names = ["Hash", "Node IP", "Node Port"]
         data["nodes"].sort(key = lambda d: d["node_key"])
         for d in data["nodes"]:
-            t1.add_row(list(d.values()))
+            if d["ip"] == ip and d["port"] == port:
+                t1.add_row(list(map(lambda x: click.style(str(x),fg='green'), list(d.values()))))
+            else:
+                t1.add_row(list(d.values()))
         print(t1)
     else:
         click.echo(r.text)
