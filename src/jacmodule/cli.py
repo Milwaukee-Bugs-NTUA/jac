@@ -143,10 +143,22 @@ def overlay():
     """
     ip, port = jac_server_addr()
 
-    click.echo("Chord Architecture")
     url = "http://{}:{}/overlay".format(ip,port)
     r = requests.get(url)
-    click.echo(r.text)
+    
+    if r.status_code == 200:
+
+        data = r.json()
+
+        click.echo("Cluster Info:")
+        t1 = PrettyTable()
+        t1.field_names = ["Hash", "Node IP", "Node Port"]
+        data["nodes"].sort(key = lambda d: d["node_key"])
+        for d in data["nodes"]:
+            t1.add_row(list(d.values()))
+        print(t1)
+    else:
+        click.echo(r.text)
 
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 def info():

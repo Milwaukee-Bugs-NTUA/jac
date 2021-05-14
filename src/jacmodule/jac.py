@@ -19,7 +19,7 @@ class JacShell(cmd.Cmd):
         # Don't use default help of cmd library
         self.default("help " + line)
 
-    def do_exit(self, line):
+    def do_exit(self, line=""):
         #Not working for edge case
         self.default("exit " + line)
         click.echo("Exiting jac shell...")
@@ -144,7 +144,7 @@ def main():
     try:
         jacshell.cmdloop()
     except KeyboardInterrupt:
-        jacshell.do_exit(None)
+        jacshell.do_exit()
 
 if __name__ == "__main__":
     main()

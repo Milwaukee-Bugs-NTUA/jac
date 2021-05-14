@@ -759,16 +759,23 @@ def overlay():
         return "You have to join first.", 403
     
     if node.is_bootstrap():
-        response_text = "{} Nodes\n".format(node.number_of_nodes)
-        l = list(node.nodes.keys())
-        l.sort()
-        for n in l:
-            response_text += "{}: {}\n".format(n,node.nodes[n])
-        return response_text
+        data = {"nodes":[{"node_key":key,"ip":ip_port[0],"port":ip_port[1]} for key,ip_port in node.nodes.items()]}
+        return app.response_class(
+            response=json.dumps(data),
+            status=200,
+            mimetype='application/json'
+        )
     else:
         url = "http://{}:{}/overlay".format(node.bnode.ip,node.bnode.port)
         r = requests.get(url)
-        return r.text
+        if r.status_code == 200:
+            return app.response_class(
+                response=json.dumps(r.json()),
+                status=200,
+                mimetype='application/json'
+            )
+        else:
+            return r.text, r.status_code
 
 @app.route('/info')
 def info():
