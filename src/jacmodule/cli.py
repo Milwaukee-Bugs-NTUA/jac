@@ -68,15 +68,30 @@ def query(key):
         r = requests.get(url)
 
         if r.status_code == 200:
-            node_data = r.json()
-            for n in node_data:
-                click.echo("Node {}".format(n["node"]))
-                click.echo("== Primary Keys ==")
-                print(*n["keys"],sep="\n")
-                click.echo("== Replica Keys ==")
-                print(*n["replicas"],sep="\n")
-                print()
+            data = r.json()
+            for node in data:
 
+                click.echo("Node Info:")
+                click.echo(f"* Node Hash: {node['node']['hash']}")
+                click.echo(f"* Node IP: {node['node']['ip']}")
+                click.echo(f"* Node Port: {node['node']['port']}")
+                click.echo()
+
+                click.echo("Primary Keys:")
+                t1 = PrettyTable()
+                t1.field_names = ["Hash", "Key", "Value"]
+                for k in node["keys"]:
+                    t1.add_row(list(k.values()))
+                print(t1)
+
+                click.echo()
+                click.echo("Replicas Keys:")
+                t2 = PrettyTable()
+                t2.field_names = ["Hash", "Key", "Value", "Replica Number"]
+                for k in node["replicas"]:
+                    t2.add_row(list(k.values()))
+                print(t2)
+                click.echo()
     else:
         url = "http://{}:{}/query".format(ip,port)
         r = requests.get(url, params={"key":key})
@@ -117,8 +132,11 @@ def delete(key):
         t1.field_names = ["Hash", "Key", "Value","Node IP", "Node Port"]
         t1.add_row(list(r.json().values()))
         print(t1)
+        click.echo()
+        click.echo("Key deleted successfully.")
     else:
         click.echo(r.text)
+
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 def depart():
     """

@@ -37,7 +37,7 @@ def join():
 
     if ip == bnode_ip and port == bnode_port:
         node = BootstrapNode(ip, port, kfactor, consistency)
-        return "New chord created"
+        return "New chord created.", 200
     else:
         
         node = Node(ip, port, (bnode_ip, bnode_port), kfactor, consistency)
@@ -97,10 +97,10 @@ def join():
                 for d in data:
                     node.add_replica(d["key"],d["value"],d["replica_number"])
             
-            return "New node added successfully!"
+            return "New node added successfully!", 200
 
         else:
-            return r.text
+            return r.text, r.status_code
 
 @app.route('/changeNext',methods=['PUT'])
 def change_next():
@@ -110,7 +110,7 @@ def change_next():
         node.next_node = None
     else:
         node.next_node = ReferenceNode(new_ip,new_port)
-    return "Changed next node"
+    return "Changed next node.", 200
 
 @app.route('/changePrevious',methods=['PUT'])
 def change_previous():
@@ -120,7 +120,7 @@ def change_previous():
         node.previous_node = None
     else:
         node.previous_node = ReferenceNode(new_ip,new_port)
-    return "Changed previous node"
+    return "Changed previous node.", 200
 
 @app.route('/addNode', methods=['PUT'])
 def add_node():
@@ -151,7 +151,7 @@ def depart():
         return "You have to join first.", 403
 
     if node.is_bootstrap():
-        return "Bootstrap node is not allowed to depart!"
+        return "Bootstrap node is not allowed to depart!", 403
     else:
         # Send keys to next node
         if not node.data == {}:
@@ -215,17 +215,17 @@ def shift_replicas():
     for k in deletion_keys:
         del node.replicas[k]
 
-    return "Replicas of previous node shifted"
+    return "Replicas of previous node shifted.", 200
 
 @app.route('/kickout', methods=['DELETE'])
 def kickout():
     global node
     if node.is_bootstrap():
-        return "Bootstrap node is not allowed to be excluded!"
+        return "Bootstrap node is not allowed to be excluded!", 200
     else:
         # Communicate with bootstrap node
         node = None
-        return "Node object deleted!"
+        return "Node object deleted!", 200
 
 @app.route('/removeNode', methods=['DELETE'])
 def remove_node():
@@ -236,9 +236,9 @@ def remove_node():
             return "Bootstrap node is not allowed to depart!"
         res = node.delete_node(keynode)
         if res == -1:
-            return "Node is not part of chord!"
+            return "Node is not part of chord!", 403
         else:
-            return "Node deleted succesfully!"
+            return "Node deleted succesfully!", 200
     else:
         return "I'm not the bootstrap server. Please contact {}:{}".format(node.bnode.ip,node.bnode.port), 301
 
@@ -252,7 +252,11 @@ def query():
     
     if key_value == "*":
         
-        data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
+        data_list = [{
+                        "node":{"hash":node.key, "ip":node.ip, "port":node.port}, 
+                        "keys":[{"hash":k, "key":v[0], "value":v[1]} for k,v in node.data.items()], 
+                        "replicas":[{"hash":k, "key":v[0], "value":v[1],"replica_number":v[2]} for k,v in node.replicas.items()],
+                    }]
 
         response = app.response_class(
             response=json.dumps(data_list),
@@ -275,7 +279,7 @@ def query():
                         "hash": key,
                         "key": node.data[key][0],
                         "value": node.data[key][1],
-                        "replica_number": "0",
+                        "replica_number": "original",
                         "node_ip": node.ip,
                         "node_port": node.port,
                     }
@@ -309,7 +313,7 @@ def query():
                     
                     return  my_response  
             else:
-                return "Key not found",404
+                return "Key not found.",404
         else:
 
             s = requests.Session()
@@ -408,7 +412,7 @@ def query_replicas():
             elif r.status_code == 204:
                 return my_response
     else:
-        return "Replica manager only have original data", 204
+        return "Replica manager only have original data.", 204
 
 
 @app.route('/nextNode')
@@ -435,7 +439,11 @@ def query_all():
     if node is None:
         return "You have to join first.", 403
 
-    data_list = [{"node":node.key, "keys":[{"key":v[0], "value":v[1]} for v in node.data.values()], "replicas":[{"key":v[0], "value":v[1],"replica_number":v[2]} for v in node.replicas.values()]}]
+    data_list = [{
+                    "node":{"hash":node.key,"ip":node.ip,"port":node.port}, 
+                    "keys":[{"hash":k,"key":v[0], "value":v[1]} for k,v in node.data.items()], 
+                    "replicas":[{"hash":k,"key":v[0], "value":v[1],"replica_number":v[2]} for k,v in node.replicas.items()],
+                }]
     
     next_node = node.next_node
 
@@ -499,7 +507,7 @@ def insert():
                 # starting process 1
                 p1.start()
             
-        return "Key added successfully to node {}:{}!".format(node.ip,node.port)
+        return "Key added successfully to node {}:{}!".format(node.ip,node.port), 200
     
     else:
         
@@ -534,7 +542,7 @@ def insert_replicas():
             
             return r.text
 
-    return "Key {} & its replicas added successfully".format(key_value)
+    return "Key {} & its replicas added successfully".format(key_value), 200
 
 @app.route('/fixReplicas',methods=['PUT'])
 def fix_replicas():
@@ -569,7 +577,7 @@ def fix_replicas():
             
             return r.text
 
-    return "Replication number updated"
+    return "Replication number updated.", 200
 
 @app.route('/initfixReplicas')
 def init_fix_replicas():
@@ -586,9 +594,9 @@ def init_fix_replicas():
         url = "http://{}:{}/fixReplicas".format(node.next_node.ip,node.next_node.port)
         s.put(url,params={"keynode":node.key,"hop": 1},json=json.dumps(data))
 
-        return "Fix Replicas Operation ended"
+        return "Fix Replicas Operation ended.", 200
     else:
-        return "No need for Fix Replicas Sequence"
+        return "No need for Fix Replicas Sequence", 200
 
 @app.route('/generateReplicas')
 def generate_replicas():
@@ -620,7 +628,7 @@ def send():
     new_keys = json.loads(request.get_json())["keys"]
     for d in new_keys:
         node.data[d["key_hash"]] = (d["key"],d["value"])
-    return "Keys transfered!"
+    return "Keys transfered!", 200
 
 @app.route('/transferKeys')
 def transfer_keys():
@@ -680,7 +688,7 @@ def delete_keys():
         keynode = int(keynode)
         node.data = {k:v for (k,v) in node.data.items() if not(k <= keynode or k > node.key)}
 
-    return "Keys deleted"
+    return "Keys deleted.", 200
 
 @app.route('/delete', methods=['DELETE'])
 def delete():
@@ -732,7 +740,7 @@ def delete():
                     async_delete(url,params,{})
                     return delete_response
         else:
-            return "Key not found",404
+            return "Key not found.",404
     else:
         # Send key to successor
         s = requests.Session()
@@ -771,7 +779,7 @@ def delete_replicas():
             
             return r.text, r.status_code
     
-    return "Key '{}' & its replicas deleted".format(key_value), 200
+    return "Key '{}' & its replicas deleted.".format(key_value), 200
 
 @app.route('/overlay')
 def overlay():
