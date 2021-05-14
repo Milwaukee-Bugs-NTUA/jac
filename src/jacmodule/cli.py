@@ -112,8 +112,13 @@ def delete(key):
 
     url = "http://{}:{}/delete".format(ip,port)
     r = requests.delete(url, params={"key":key})
-    click.echo(r.text)
-
+    if r.status_code == 200:
+        t1 = PrettyTable()
+        t1.field_names = ["Hash", "Key", "Value","Node IP", "Node Port"]
+        t1.add_row(list(r.json().values()))
+        print(t1)
+    else:
+        click.echo(r.text)
 @cli_group.command(context_settings=CONTEXT_SETTINGS)
 def depart():
     """

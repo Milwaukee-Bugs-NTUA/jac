@@ -693,13 +693,25 @@ def delete():
     
     successor = node.successor(key_value)
     if successor.key == node.key:
-        # Add key here
         if key in node.data:
 
+            data = {
+                "hash": key,
+                "key": node.data[key][0],
+                "value": node.data[key][1],
+                "node_ip": node.ip,
+                "node_port": node.port,
+            }
+            delete_response = response = app.response_class(
+                response=json.dumps(data),
+                status=200,
+                mimetype='application/json'
+            )
+        
             del node.data[key]
 
             if node.kfactor == 1:
-                return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+                return delete_response
             else:
 
                 url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
@@ -711,11 +723,14 @@ def delete():
                     s.mount('http://', HTTPAdapter(max_retries=0))
                     r = s.delete(url,params=params)
                     
-                    return r.text
+                    if r.status_code == 200:
+                        return delete_response
+                    else:
+                        return r.text, r.status_code
 
                 elif node.consistency_type == "eventually":
                     async_delete(url,params,{})
-                    return "Key '{}' deleted from node {}:{}!".format(key_value,node.ip,node.port)
+                    return delete_response
         else:
             return "Key not found",404
     else:
@@ -724,7 +739,14 @@ def delete():
         s.mount('http://', HTTPAdapter(max_retries=0))
         url = "http://{}:{}/delete".format(successor.ip,successor.port)
         r = s.delete(url,params={"key":key_value})
-        return r.text
+        if r.status_code == 200:
+            return app.response_class(
+                response=json.dumps(r.json()),
+                status=200,
+                mimetype='application/json'
+            )
+        else:
+            return r.text, r.status_code
 
 @app.route('/deleteReplicas',methods=['DELETE'])
 def delete_replicas():
@@ -747,9 +769,9 @@ def delete_replicas():
             url = "http://{}:{}/deleteReplicas".format(node.next_node.ip,node.next_node.port)
             r = s.delete(url,params={"key":key_value,"replica_number":replica_number + 1})
             
-            return r.text
+            return r.text, r.status_code
     
-    return "Key '{}' & its replicas deleted".format(key_value)
+    return "Key '{}' & its replicas deleted".format(key_value), 200
 
 @app.route('/overlay')
 def overlay():
