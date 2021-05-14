@@ -21,5 +21,6 @@ setup(
             "requests",
             "pyfiglet",
             "Flask",
+            "prettytable",
         ],
 )

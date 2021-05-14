@@ -270,23 +270,44 @@ def query():
         if successor.key == node.key:
 
             if key in node.data:
+
+                data = {
+                        "hash": key,
+                        "key": node.data[key][0],
+                        "value": node.data[key][1],
+                        "replica_number": "0",
+                        "node_ip": node.ip,
+                        "node_port": node.port,
+                    }
+                my_response = app.response_class(
+                                response=json.dumps(data),
+                                status=200,
+                                mimetype='application/json'
+                            )
                 
                 if node.kfactor == 1:
-                
-                    return "Key pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
-                
+
+                    return my_response
+
                 elif node.consistency_type == "chain-replication":
                     
                     s = requests.Session()
                     s.mount('http://', HTTPAdapter(max_retries=0))
                     url = "http://{}:{}/queryReplicas".format(node.next_node.ip,node.next_node.port)
                     r = s.get(url,params={"key":key_value})
-                    return r.text, r.status_code
+                    
+                    if r.status_code == 200:
+                        return  app.response_class(
+                            response=json.dumps(r.json()),
+                            status=r.status_code,
+                            mimetype='application/json'
+                        )
+                    else:
+                        return r.text, r.status_code
                 
                 elif node.consistency_type == "eventually":
                     
-                    return "Key pair {} found in node {}:{}!".format(node.data[key],node.ip,node.port)
-                        
+                    return  my_response  
             else:
                 return "Key not found",404
         else:
@@ -295,22 +316,56 @@ def query():
             s.mount('http://', HTTPAdapter(max_retries=0))
 
             if node.kfactor > 1 and key in node.replicas:
+
+                data = {
+                    "hash": key,
+                    "key": node.replicas[key][0],
+                    "value": node.replicas[key][1],
+                    "replica_number": node.replicas[key][2],
+                    "node_ip": node.ip,
+                    "node_port": node.port,
+                }
+
+                my_response = app.response_class(
+                                response=json.dumps(data),
+                                status=200,
+                                mimetype='application/json'
+                            )
                 
                 if node.consistency_type == "eventually":
-                    return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port)
+                    
+                    return my_response
 
                 elif node.consistency_type == "chain-replication":
+                    
                     if node.replicas[key][2] == node.kfactor - 1 or node.next_node.key == successor.key: 
-                        return "Key pair {} found in node {}:{}!".format(node.replicas[key],node.ip,node.port) 
+
+                        return my_response
+
                     else:
                         url = "http://{}:{}/query".format(node.next_node.ip,node.next_node.port)
                         r = s.get(url,params={"key":key_value})
-                        return r.text
+
+                        if r.status_code == 200:
+                            return  app.response_class(
+                                response=json.dumps(r.json()),
+                                status=r.status_code,
+                                mimetype='application/json'
+                            )
+                        else:
+                            return r.text, r.status_code
                     
             # Send key to successor
             url = "http://{}:{}/query".format(successor.ip,successor.port)
             r = s.get(url,params={"key":key_value})
-            return r.text
+            if r.status_code == 200:
+                return  app.response_class(
+                    response=json.dumps(r.json()),
+                    status=r.status_code,
+                    mimetype='application/json'
+                )
+            else:
+                return r.text, r.status_code
 
 @app.route('/queryReplicas')
 def query_replicas():
@@ -320,9 +375,23 @@ def query_replicas():
     k, v, replica_number = node.replicas[hash_key(key_value)]
 
     if not node.key == node.successor(key_value).key:
+
+        data = {
+            "hash": k,
+            "key": key_value,
+            "value": v,
+            "replica_number": replica_number,
+            "node_ip": node.ip,
+            "node_port": node.port,
+        }
+        my_response = app.response_class(
+                                response=json.dumps(data),
+                                status=200,
+                                mimetype='application/json'
+                            )
     
         if replica_number == node.kfactor - 1:
-            return "Key pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
+            return my_response
         else:
                 
             s = requests.Session()
@@ -331,9 +400,13 @@ def query_replicas():
             r = s.get(url,params={"key":key_value})
 
             if r.status_code == 200:
-                return r.text
+                return app.response_class(
+                            response=json.dumps(r.json()),
+                            status=200,
+                            mimetype='application/json'
+                        )
             elif r.status_code == 204:
-                return "Key pair {} found in node {}:{}!".format(node.replicas[hash_key(key_value)],node.ip,node.port)
+                return my_response
     else:
         return "Replica manager only have original data", 204
 
@@ -686,16 +759,23 @@ def overlay():
         return "You have to join first.", 403
     
     if node.is_bootstrap():
-        response_text = "{} Nodes\n".format(node.number_of_nodes)
-        l = list(node.nodes.keys())
-        l.sort()
-        for n in l:
-            response_text += "{}: {}\n".format(n,node.nodes[n])
-        return response_text
+        data = {"nodes":[{"node_key":key,"ip":ip_port[0],"port":ip_port[1]} for key,ip_port in node.nodes.items()]}
+        return app.response_class(
+            response=json.dumps(data),
+            status=200,
+            mimetype='application/json'
+        )
     else:
         url = "http://{}:{}/overlay".format(node.bnode.ip,node.bnode.port)
         r = requests.get(url)
-        return r.text
+        if r.status_code == 200:
+            return app.response_class(
+                response=json.dumps(r.json()),
+                status=200,
+                mimetype='application/json'
+            )
+        else:
+            return r.text, r.status_code
 
 @app.route('/info')
 def info():
@@ -704,18 +784,29 @@ def info():
     if node is None:
         return "You have to join first.", 403
 
+    if node.previous_node == None:
+        p_hash, p_ip, p_port = "none", "none", "none"
+
     data = {
         "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
         "replicas": [{"key_hash":k,"key":v[0],"value":v[1],"replica_num":v[2]} for (k,v) in node.replicas.items()],
-        "previous": {
+        "previous": {},
+        "next": {},
+    }
+    if node.previous_node != None:
+        data["previous"] = {
+            "hash": node.previous_node.key,
             "ip": node.previous_node.ip,
             "port": node.previous_node.port,
-        },
-        "next": { 
+        }
+        
+    if node.next_node != None:
+        data["next"] = { 
+            "hash": node.next_node.key,
             "ip": node.next_node.ip,
             "port": node.next_node.port,
-        },
-    }
+        }
+
     response = app.response_class(
         response=json.dumps(data),
         status=200,
