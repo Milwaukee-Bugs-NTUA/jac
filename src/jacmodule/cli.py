@@ -6,6 +6,7 @@ import socket
 from pathlib import Path
 import os
 import time
+from prettytable import PrettyTable
 
 CONTEXT_SETTINGS = dict(help_option_names=['--help','-h'])
 
@@ -147,19 +148,44 @@ def info():
     """
     ip, port = jac_server_addr()
 
-    click.echo("Node Info")
     url = "http://{}:{}/info".format(ip,port)
     r = requests.get(url)
     if r.status_code == 200:
+
         data = r.json()
-        click.echo("== Primary Keys ==")
-        print(*data["keys"],sep="\n")
-        click.echo("== Replicas Keys ==")
-        print(*data["replicas"],sep="\n")
-        click.echo("Previous Node")
-        click.echo(data["previous"])
-        click.echo("Next Node")
-        click.echo(data["next"])
+
+        click.echo("Node Info:")
+        click.echo(f"* Node IP: {ip}")
+        click.echo(f"* Node Port: {port}")
+        click.echo()
+
+        click.echo("Primary Keys:")
+        t1 = PrettyTable()
+        t1.field_names = ["Hash", "Key", "Value"]
+        for k in data["keys"]:
+            t1.add_row(list(k.values()))
+        print(t1)
+
+        click.echo()
+        click.echo("Replicas Keys:")
+        t2 = PrettyTable()
+        t2.field_names = ["Hash", "Key", "Value"]
+        for k in data["replicas"]:
+            t2.add_row(list(k.values()))
+        print(t2)
+
+        click.echo()
+        click.echo("Connected Nodes:")
+        t3 = PrettyTable()
+        t3.field_names = ["Hash", "IP", "Port", "Role"]
+
+        if data["previous"] != {}:
+            t3.add_row([*data["previous"].values(), "Previous Node"])
+
+        if data["next"] != {}:
+            t3.add_row([*data["next"].values(), "Next Node"])
+        print(t3)
+
     else:
         click.echo(r.text)
 

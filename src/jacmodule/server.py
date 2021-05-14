@@ -704,18 +704,29 @@ def info():
     if node is None:
         return "You have to join first.", 403
 
+    if node.previous_node == None:
+        p_hash, p_ip, p_port = "none", "none", "none"
+
     data = {
         "keys": [{"key_hash":k,"key":v[0],"value":v[1]} for (k,v) in node.data.items()],
         "replicas": [{"key_hash":k,"key":v[0],"value":v[1],"replica_num":v[2]} for (k,v) in node.replicas.items()],
-        "previous": {
+        "previous": {},
+        "next": {},
+    }
+    if node.previous_node != None:
+        data["previous"] = {
+            "hash": node.previous_node.key,
             "ip": node.previous_node.ip,
             "port": node.previous_node.port,
-        },
-        "next": { 
+        }
+        
+    if node.next_node != None:
+        data["next"] = { 
+            "hash": node.next_node.key,
             "ip": node.next_node.ip,
             "port": node.next_node.port,
-        },
-    }
+        }
+
     response = app.response_class(
         response=json.dumps(data),
         status=200,
