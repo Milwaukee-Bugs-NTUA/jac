@@ -21,6 +21,7 @@ This repo was created for version control of the project implemented during [*Di
   - [Using conda](#conda-installation)
   - [Using pip](#pip-installation)
 - [Deployment](#Deployment)
+- [Demo](#Demo)
 - [References](#References)
 
 <a name="Overview"/>
@@ -29,7 +30,7 @@ This repo was created for version control of the project implemented during [*Di
 
 JAC is a distributed system that provides a look up service of key-value pairs, stored across a cluster of nodes. Any participating node can retrieve the value associated to a particular key or even the value of one of its replicas, if replication of data is enabled. JAC provides out of the box 2 types of consistency, *eventually consistency* & *chain-replication*. In more depth, each node offers the basic fuctionalities of a *Distributed Hash Table*, such as ```insert```, ```query``` & ```delete``` with some additional commands like ```overlay```, ```info``` and others. Further infromation about all the available commands can be found inside [UTILITIES.md](https://github.com/Milwaukee-Bugs-NTUA/jac/blob/main/UTILITIES.md).
 
-<img align="center" src="https://user-images.githubusercontent.com/45902117/118357115-1bfe6e80-b581-11eb-84a5-870a19784c34.gif" width="600"/>
+<img align="center" src="https://user-images.githubusercontent.com/45902117/118357115-1bfe6e80-b581-11eb-84a5-870a19784c34.gif" width="800"/>
 
 ```
 jac-cli@ntua$ help
@@ -108,6 +109,13 @@ cd jac/src/jacmodule
 ***⚠️ ATTENTION:** JAC was developed in an isolated cluster inside a private network of virtual machines and was never tested in production. Thus, the development server was used instead of the suggested WSGI server.*
 
 During development, a cluster of 5 virtual machines were provided. For transfering the src code to the host and from there to each node, the script ``jac/scripts/send_module.sh`` was used.
+
+<a name="Demo"/>
+
+## 📌 Demo
+
+<img align="center" src="https://user-images.githubusercontent.com/45902117/118372549-e8d8d100-b5ba-11eb-8332-e8fa6b001f21.gif" width="800"/>
+
 
 <a name="References"/>
 
