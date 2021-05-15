@@ -13,7 +13,7 @@
 
 This repo was created for version control of the project implemented during [*Distributed Systems*](https://www.ece.ntua.gr/en/undergraduate/courses/3377) course in the department of Electrical & Computer Engireering School, NTUA. The main goal was the construction of file sharing application with multiple distributed nodes DHT. Further information can be found in the related pdf file (in greek).
 
-## 📋 Table of COntents
+## 📋 Table of Contents
 
 - [Overview](#Overview)
 - [Architecture](#Architecture)
