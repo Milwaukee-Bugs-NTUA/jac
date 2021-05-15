@@ -17,7 +17,7 @@ This repo was created for version control of the project implemented during [*Di
 
 ### 📌 Overview
 
-JAC is a distributed system that provides a look up service of key-value pairs, stored across a cluster of nodes. Any participating node can retrieve the value associated to a particular key or even the value of one of its replicas, if replication of data is enabled. JAC provides out of the box 2 types of consistency, *eventually consistency* & *chain-replication*. In more depth, each node offers the basic fuctionalities of a *Distributed Hash Table*, such as ```insert```, ```query``` & ```delete``` with some additional commands like ```overlay```, ```info``` and others. Further infromation about all the available commands can be found inside [Utilities.md]().
+JAC is a distributed system that provides a look up service of key-value pairs, stored across a cluster of nodes. Any participating node can retrieve the value associated to a particular key or even the value of one of its replicas, if replication of data is enabled. JAC provides out of the box 2 types of consistency, *eventually consistency* & *chain-replication*. In more depth, each node offers the basic fuctionalities of a *Distributed Hash Table*, such as ```insert```, ```query``` & ```delete``` with some additional commands like ```overlay```, ```info``` and others. Further infromation about all the available commands can be found inside [UTILITIES.md](https://github.com/Milwaukee-Bugs-NTUA/jac/blob/main/UTILITIES.md).
 
 <img align="center" src="https://user-images.githubusercontent.com/45902117/118357115-1bfe6e80-b581-11eb-84a5-870a19784c34.gif" width="600"/>
 
