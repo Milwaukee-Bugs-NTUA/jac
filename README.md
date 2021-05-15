@@ -13,9 +13,19 @@
 
 This repo was created for version control of the project implemented during [*Distributed Systems*](https://www.ece.ntua.gr/en/undergraduate/courses/3377) course in the department of Electrical & Computer Engireering School, NTUA. The main goal was the construction of file sharing application with multiple distributed nodes DHT. Further information can be found in the related pdf file (in greek).
 
-<br/>
+## 📋 Table of COntents
 
-### 📌 Overview
+- [Overview](#Overview)
+- [Architecture](#Architecture)
+- [Installation](#Installation)
+  - [Using conda](#conda-installation)
+  - [Using pip](#pip-installation)
+- [Deployment](#Deployment)
+- [References](#References)
+
+<a name="Overview"/>
+
+## 📌 Overview
 
 JAC is a distributed system that provides a look up service of key-value pairs, stored across a cluster of nodes. Any participating node can retrieve the value associated to a particular key or even the value of one of its replicas, if replication of data is enabled. JAC provides out of the box 2 types of consistency, *eventually consistency* & *chain-replication*. In more depth, each node offers the basic fuctionalities of a *Distributed Hash Table*, such as ```insert```, ```query``` & ```delete``` with some additional commands like ```overlay```, ```info``` and others. Further infromation about all the available commands can be found inside [UTILITIES.md](https://github.com/Milwaukee-Bugs-NTUA/jac/blob/main/UTILITIES.md).
 
@@ -37,7 +47,9 @@ Commands:
   query    Finds the value of <key>.
 ```
 
-### 📌 Architecture
+<a name="Architecture"/>
+
+## 📌 Architecture
 
 The basic concept behind jac desing can be found in the diagram offered below. The entire shell is offered with the usage of [cmd package](https://docs.python.org/3/library/cmd.html) and [click framework](https://click.palletsprojects.com/en/8.0.x/), while the actual execution of each operation is accomplished by the [Flask](https://flask.palletsprojects.com/en/2.0.x/) server that runs on each node. After it receives a request, it can potential communicate with other nodes of the cluster, in order to fulfill the user request. Once proper data are gathered, server uses json format to send the requested information back to the *click command*, which in its terms will output the result.
 
@@ -45,9 +57,18 @@ The basic concept behind jac desing can be found in the diagram offered below. T
   <image width="600" src="https://user-images.githubusercontent.com/45902117/118359828-ef048880-b58d-11eb-82da-4f7785f62b75.png" >
 </p>
   
-### 📌 Installation
+<a name="Installation"/>
+
+As far as Chord protocol is concerned, a simpler version was implemented, with the following key concepts: 
+- No finger tables were constructed (as requested by supervisors). Each node knows only about the next and the previous one.
+- Unfortunately a single point of faillure was introduced. The first node that joins the chord, aka the bootstrap node, knows the address & the port of every node inside the system. On node join, each candidate asks this bootstrap node for information about its future position inside the chord.
+- Requests are forwarded in both directions, decreasing system's response time.
+  
+## 📌 Installation
 
 One can found the proper steps for downloading and installing jac dependencies in their system (either physical or virtual machines), using two known package managers of python like ``conda`` & ``pip``. Steps mentioned above assume that a proper python virtual enviroment has been created in advance.
+
+<a name="conda-installation"/>
 
 #### Option A: Using conda
 
@@ -57,6 +78,7 @@ In this case, an additional package is needed, like [setuptools](https://anacond
 cd jac/src/
 setuptools-conda install-requirements ./
 ```
+<a name="pip-installation"/>
 
 #### Option B: Using pip
 
@@ -67,7 +89,9 @@ cd jac/src/
 pip install ./requirements.txt
 ```
 
-### 📌 Deployment
+<a name="Deployment"/>
+
+## 📌 Deployment
 
 At this point, jac is capable of running inside the virtual enviroment by running the following commands.
 
@@ -85,5 +109,7 @@ cd jac/src/jacmodule
 
 During development, a cluster of 5 virtual machines were provided. For transfering the src code to the host and from there to each node, the script ``jac/scripts/send_module.sh`` was used.
 
-### 📌 References
+<a name="References"/>
+
+## 📌 References
 [1] Stoica, Ion, et al. "Chord: A scalable peer-to-peer lookup service for internet applications." ACM SIGCOMM Computer Communication Review 31.4 (2001): 149-160.
