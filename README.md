@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8-informational.svg)](https://www.python.org/downloads/release/python-385/)
 [![Anaconda](https://img.shields.io/badge/Anaconda-2020.11-green.svg)](https://www.anaconda.com/products/individual)
 [![Flask](https://img.shields.io/badge/Flask-1.1.2-lightgrey.svg)](https://flask.palletsprojects.com/en/2.0.x/)
-[![Click](https://img.shields.io/badge/Click-7.1.2-blueviolet.svg)](https://flask.palletsprojects.com/en/2.0.x/)
+[![Click](https://img.shields.io/badge/Click-7.1.2-blueviolet.svg)](https://click.palletsprojects.com/en/8.0.x/)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/Milwaukee-Bugs-NTUA/jac/blob/master/LICENSE)
 [![Open Source Love svg2](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
 
